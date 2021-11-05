@@ -1,1 +1,3 @@
-# elfacun
+# Elfacun Chess Interface Module
+
+Coming soon...
