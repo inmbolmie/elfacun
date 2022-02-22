@@ -282,7 +282,7 @@ We will show how Picochess can be configured to connect to Elfacun using Bluetoo
 
 For this test an image of Picochess V3 on a Raspberry PI 3B+ has been used.
 
-https://groups.google.com/g/picochess/c/jCuWSm0EDH8?pli=1
+[https://groups.google.com/g/picochess/c/jCuWSm0EDH8?pli=1](https://groups.google.com/g/picochess/c/jCuWSm0EDH8?pli=1)
 
 You will need access to a Picochess command line, you can get it on its desktop, or remotely via VNC or SSH.
 
@@ -391,7 +391,7 @@ Be careful when removing the card, as it is a tight fit and can take some time. 
 
 Elfacun is compatible with Grahan O'Neill drivers via USB and Bluetooth. You can get them here:
 
-https://goneill.co.nz/chess.php
+[https://goneill.co.nz/chess.php](https://goneill.co.nz/chess.php)
 
 
 _"DGT", "Millennium" and "Mephisto" are trademarks of their respective owners.
