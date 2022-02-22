@@ -37,7 +37,7 @@ Tha main module features are:
 
 Video demonstrating the module functionality:
 
-https://youtu.be/sNqQtBvz1Ds
+[https://youtu.be/sNqQtBvz1Ds](https://youtu.be/sNqQtBvz1Ds)
 
 (*) Experimental feaure.
 
