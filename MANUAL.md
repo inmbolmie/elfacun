@@ -244,10 +244,10 @@ You can launch a challenge from LichessTV pressing twice one of the six module b
 
 For example, to configure the first button to lauch a rated 10+0 game as rando color you will configure in _settings.txt_:
 
-    lichess.mode.X.time = 10
-    lichess.mode.X.increment = 0
-    lichess.mode.X.color = random
-    lichess.mode.X.rated = true
+    lichess.mode.X.time=10
+    lichess.mode.X.increment=0
+    lichess.mode.X.color=random
+    lichess.mode.X.rated=true
 
 If you pressed one button but don't want to launch the challenge, simply press a different button to cancel.
 
