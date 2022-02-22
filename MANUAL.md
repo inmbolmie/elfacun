@@ -61,7 +61,7 @@ You can make permanent changes to the module configuration by editing a [setting
 
 __The piece scanning won't work while the SD card is inserted, so please remove the card after successfully configuring the module.__
 
-A minimal configuration is needed if you wan to use Lichess mode, that is your WIFI ssid and credentials, and your Lichess API token.
+A minimal configuration is needed if you want to use Lichess mode, that is your WIFI ssid and credentials, and your Lichess API token.
 
 The values you can edit in that file are:
 
@@ -328,7 +328,7 @@ Once modified, save the file and restart Picochess, and now Revelation II LED su
 
 ### Connecting via USB
 
-No special configuration is needed. Simply start the module in mode A or B depending on the protocol you wan to use.
+No special configuration is needed. Simply start the module in mode A or B depending on the protocol you want to use.
 
 ### Connecting via Bluetooth
 
