@@ -15,7 +15,7 @@
 7. [Moving pieces](#Moving-pieces)
 8. [Promotion](#Promotion)
 9. [Take back movements](#Take-back-movements)
-10. [Usign with a DGT 3000 clock](#Usign-with-a-DGT-3000-clock)
+10. [Using with a DGT 3000 clock](#Using-with-a-DGT-3000-clock)
 11. [Lichess mode](#Lichess-mode)
 12. [Using Elfacun with Picochess](#Using-Elfacun-with-Picochess)
 13. [Connecting via USB](#Connecting-via-USB)
@@ -184,7 +184,7 @@ When promoting a pawn to a piece diffent than a queen in a situation where you d
 
 The module will detect all the played movements and you will be able to take them back. When taking back a capture, complete first the back movement and then place the taken piece back. The taken piece will appear on the screen when you complete then back movement to indicate it has to be placed on the board. Be careful not to misplay any back movement, as the module may lose track of the movements in that case.
 
-### Usign with a DGT 3000 clock
+### Using with a DGT 3000 clock
 
 You can use a DGT-3000 clock with DGT-compatible apps like Picochess. With Elfacun turned off connect the clock to the module using a stereo mini-jack to mini-jack cable. Shorter cables are recommended as the I2C signal will not work with longer cables. Someting like a 50cm cable will work. Someting like a 2m cable won't work. Something in between may or may not work.
 
