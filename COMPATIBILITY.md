@@ -34,7 +34,7 @@ The clock data doesn't work well with Arena with Elfacun in DGT mode.
 
 Picochess works fine with Elfacun but you will have to force the Revelation-II mode with a small code modification if you want to have LED support enabled.
 
-[Using Elfacun with Picochess](MANUAL.md###Using-Elfacun-with-Picochess)
+[Using Elfacun with Picochess](MANUAL.md#Using-Elfacun-with-Picochess)
 
 
 ### Chess.com (Android)
