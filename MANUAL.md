@@ -23,7 +23,7 @@
 15. [Connecting via BLE](#connecting-via-ble)
 16. [Adjusting buzzer volume](#adjusting-buzzer-volume)
 17. [Update Elfacun Software](#update-elfacun-software)
-18. [Using Elfacun with Graham O'Neill drivers](#using-elfacun-with-graham-o'neill-drivers)
+18. [Using Elfacun with Graham O'Neill drivers](#using-elfacun-with-graham-oneill-drivers)
 
 
 ### Startup and modes of Operation
