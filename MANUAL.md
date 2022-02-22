@@ -6,7 +6,7 @@
 
 ### Table of contents:
 
-1. [Startup and modes of Operation](#Startup-and-modes-of-Operation)
+1. [Startup and modes of Operation](#startup-and-modes-of-operation)
 2. [Configure the module](#Configure-the-module)
 3. [Piece preparation](#Piece-preparation)
 4. [Piece programming](#Piece-programming)
