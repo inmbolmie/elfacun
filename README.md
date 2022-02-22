@@ -1,9 +1,8 @@
 # Elfacun Chess Interface Module
 
+This is an ongoing hardware project to create a chess module compatible with the old Mephisto modular boards (Exclusive, Modular, München) that will provide connectivity to a wide variety of chess apps and services.
 
 ![Elfacun](./images/pic6.jpg)
-
-This is an ongoing hardware project to create a chess module compatible with the old Mephisto modular boards (Exclusive, Modular, München) that will provide connectivity to a wide variety of chess apps and services.
 
 The hardware as well as software developed for it will be eventually published here under the GPL license.
 
