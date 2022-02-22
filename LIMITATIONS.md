@@ -27,7 +27,7 @@ A 3D printed case is easy and cheap to produce for a small-scale project like th
 
 Elfacun uses the on-board USB, WIFI and Bluetooth resources of the ESP32 module, so it will be able to connect to any system as far as that system is compatible with the ESP32 WIFI and Bluetooth modes. More details can be found here:
 
-http://esp32.net/
+[http://esp32.net/](http://esp32.net/)
 
     Wi-Fi: 802.11 b/g/n/e/i (802.11n @ 2.4 GHz up to 150 Mbit/s)
     Bluetooth: v4.2 BR/EDR and Bluetooth Low Energy (BLE)
