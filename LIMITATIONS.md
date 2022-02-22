@@ -89,7 +89,7 @@ In passive mode the original module controls the board leds, so you need to get 
 
 ### Lichess mode
 
-Lichess mode in based on the public Lichess Board API. This API has some limitations. Other limitations come from the limited resources available in the ESP32 to implement this mode. These limitations only apply to the native Lichess mode (via WIFI), so if you play Lichess through a connected app (like White Pawn) the limitations don't apply.
+Lichess mode is based on the public Lichess Board API. This API has some limitations. Other limitations come from the limited resources available in the ESP32 to implement this mode. These limitations only apply to the native Lichess mode (via WIFI), so if you play Lichess through a connected app (like White Pawn) the limitations don't apply.
 
 The Lichess Board API doesn't allow to launch games with blitz time controls. The minimum recommended time control to play on a board is 10+0 and over. If you try to launch a challenge with an invalid time control from the board, the challenge could be rejected or launched on a different time control.
 
