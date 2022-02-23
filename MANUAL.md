@@ -389,7 +389,7 @@ Be careful when removing the card, as it is a tight fit and can take some time. 
 
 ### Using Elfacun with Graham O'Neill drivers
 
-Elfacun is compatible with Grahan O'Neill drivers via USB and Bluetooth. You can get them here:
+Elfacun is compatible with Grahan O'Neill drivers via USB, Bluetooth and BLE. You can get them here:
 
 [https://goneill.co.nz/chess.php](https://goneill.co.nz/chess.php)
 
