@@ -190,6 +190,8 @@ You can use a DGT-3000 clock with DGT-compatible apps like Picochess. With Elfac
 
 When you turn on the module, the clock will be automatically detected and used with the apps.
 
+To indicate the correct clock orientation, the clock lever should be up at white's side at module startup. This cannot be changed when the module is already started. If you play with a [reversed position](#play-with-reversed-board) the clock times will be automatically switched to the righ side.
+
 The clock buttons will be functional, as well as the module buttons emulating the clock buttons.
 
 The first 5 module buttons (stating on the leftmost) emulate the 5 DGT-3000 front buttons. The sixth module button emulates the clock lever (changes the lever position with every button press).
