@@ -26,7 +26,7 @@ Tha main module features are:
 * WIFI support for direct connection to lichess.org
 * Compatible with most DGT-compatible apps
 * Compatible with most ChessLink-compatible apps
-* 320x240 TFT color screen with board position and clock info where available.
+* 2.2'' 320x240 TFT color screen with board position and clock info where available.
 * Compatible with the DGT-3000 clock.
 * Can emulate a DGT 3000 clock (mode 25 only) with DGT-compatible apps.
 * Can play alongside some original mephisto modules (*)
