@@ -6,25 +6,36 @@
 
 ### Table of contents:
 
-1. [Startup and modes of Operation](#startup-and-modes-of-operation)
-2. [Configure the module](#configure-the-module)
-3. [Piece preparation](#piece-preparation)
-4. [Piece programming](#piece-programming)
-5. [Setting up the board](#setting-up-the-board)
-6. [Play with Reversed board](#play-with-reversed-board)
-7. [Moving pieces](#moving-pieces)
-8. [Promotion](#promotion)
-9. [Take back movements](#take-back-movements)
-10. [Using with a DGT 3000 clock](#using-with-a-dgt-3000-clock)
-11. [Lichess mode](#lichess-mode)
-12. [Using Elfacun with Picochess](#using-elfacun-with-picochess)
-13. [Connecting via USB](#connecting-via-usb)
-14. [Connecting via Bluetooth](#connecting-via-bluetooth)
-15. [Connecting via BLE](#connecting-via-ble)
-16. [Adjusting buzzer volume](#adjusting-buzzer-volume)
-17. [Update Elfacun Software](#update-elfacun-software)
-18. [Using Elfacun with Graham O'Neill drivers](#using-elfacun-with-graham-oneill-drivers)
+1. [Powering the module](#powering-the-module)
+2. [Startup and modes of Operation](#startup-and-modes-of-operation)
+3. [Configure the module](#configure-the-module)
+4. [Piece preparation](#piece-preparation)
+5. [Piece programming](#piece-programming)
+6. [Setting up the board](#setting-up-the-board)
+7. [Play with Reversed board](#play-with-reversed-board)
+8. [Moving pieces](#moving-pieces)
+9. [Promotion](#promotion)
+10. [Take back movements](#take-back-movements)
+11. [Using with a DGT 3000 clock](#using-with-a-dgt-3000-clock)
+12. [Lichess mode](#lichess-mode)
+13. [Using Elfacun with Picochess](#using-elfacun-with-picochess)
+14. [Connecting via USB](#connecting-via-usb)
+15. [Connecting via Bluetooth](#connecting-via-bluetooth)
+16. [Connecting via BLE](#connecting-via-ble)
+17. [Adjusting buzzer volume](#adjusting-buzzer-volume)
+18. [Update Elfacun Software](#update-elfacun-software)
+19. [Using Elfacun with Graham O'Neill drivers](#using-elfacun-with-graham-oneill-drivers)
 
+
+### Powering the module
+
+Once inserted into the board, there are two major possible configurations to power the module:
+
+In __standalone mode__, you will have only Elfacun plugged into the board. You need to __power the module from its USB port__, regarless of if you are connecting an app via USB or you aren't. The module can be powered from a computer USB port as well as from a regular USB wall adapter. You can also have the board powered if you want to, but power from the board won't be used by the module.
+
+In __passive mode__ you will have Elfacun plugged alongside an original module. In that situation you will need __both, power from Elfacun USB port and powering the board__ as you would regulary do to operate the original module. Be sure that you start the original module before you start Elfacun, because it will need to detect that the original module is operating to be able to enter in this special mode. If you start Elfacun before starting the original module, both will be trying to scan the board at the same time and neither will work properly.
+
+There are some Mephisto boards (identified as type 4b in the schach-computer.info wiki) that aren't voltage-regulated and put the full wall adapter voltage into the modules. I don't recommend using Elfacun with those boards powered, as it will have to support an unknown voltage and cannot be guaranteed to work or not to be damaged. More information about the boards power supplies can be found here: https://www.schach-computer.info/wiki/index.php?title=Stromversorgung_Mephisto_Modulare_Reihe
 
 ### Startup and modes of Operation
 
