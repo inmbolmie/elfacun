@@ -35,7 +35,7 @@ In __standalone mode__, you will have only Elfacun plugged into the board. You n
 
 In __passive mode__ you will have Elfacun plugged alongside an original module. In that situation you will need __both, power from Elfacun USB port and powering the board__ as you would regulary do to operate the original module. Be sure that you start the original module before you start Elfacun, because it will need to detect that the original module is operating to be able to enter in this special mode. If you start Elfacun before starting the original module, both will be trying to scan the board at the same time and neither will work properly.
 
-There are some Mephisto boards (identified as type 4b in the schach-computer.info wiki) that aren't voltage-regulated and put the full wall adapter voltage into the modules. I don't recommend using Elfacun with those boards powered, as it will have to support an unknown voltage and cannot be guaranteed to work or not to be damaged. More information about the boards power supplies can be found here: https://www.schach-computer.info/wiki/index.php?title=Stromversorgung_Mephisto_Modulare_Reihe
+There are some Mephisto boards (identified as type 4b in the schach-computer.info wiki) that aren't voltage-regulated and put the full wall adapter voltage into the modules. I don't recommend using Elfacun with those boards powered, as it will have to support an unknown voltage and cannot be guaranteed to work or not to be damaged. More information about the boards power supplies can be found here: [https://www.schach-computer.info/wiki/index.php?title=Stromversorgung_Mephisto_Modulare_Reihe](https://www.schach-computer.info/wiki/index.php?title=Stromversorgung_Mephisto_Modulare_Reihe)
 
 ### Startup and modes of Operation
 
