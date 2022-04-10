@@ -343,6 +343,8 @@ Once modified, save the file and restart Picochess, and now Revelation II LED su
 
 No special configuration is needed. Simply start the module in mode A or B depending on the protocol you want to use.
 
+On windows machines you may need to install the USB-to-serial driver for the ESP32. If so, follow the instructions here to install it: [https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/establish-serial-connection.html](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/establish-serial-connection.html). For the ESP32 boards I've been using so far, the relevant driver is the CP210x driver.
+
 ### Connecting via Bluetooth
 
 We will show an example of how to configure a Bluetooth connection in LucasChess Windows. The configuration for Rabbitplugin or other programs should be similar.
