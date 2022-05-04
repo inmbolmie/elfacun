@@ -382,22 +382,39 @@ The buzzer volume can be modified adjusting the variable resistor RV1. It can al
 
 ### Update Elfacun Software
 
-You can update the module software putting an _update.bin_ file into an SD card, inserting the SD into the module and turning the module on.
+You can update the module software putting an update file into an SD card, inserting the SD into the module and turning the module on.
 
+It is recommended that the module is not inserted into the board for the update, you only need to power it up from the USB cable.
 
+__Make sure the SD card you are using is NOT write-protected__.
 
+Download the update file and place it in the root directory of the SD card. The update file name will be something like _update_0x6ee0d617.bin_. Make sure you download the file in its entirety.
 
-The module doesn't need to be inserted into the board for the update.
+Insert the SD card into its slot behind the module screen with the contacts facing upwards like this:
 
-__Make sure the SD card you use is NOT write-protected__.
+![alt text](./images/update1.JPG)
 
-Turn the module on, if the module finds an _update.bin_ file into the SD card it will ask you for confirmation of the update. __Press simultaneously the first and second buttons and the update will start__.
+![alt text](./images/update2.JPG)
+
+Plug the USB cable and turn the module on, if the module finds an update file into the SD card it will check it for integrity. If the integrity check failes make sure you download the correct file in its entirety. The checking process will take some time.
+
+![alt text](./images/update3.JPG)
+
+If the update file is correct, you will be prompted to confirm the update. To do so press __simultaneously__ the two leftmost module buttons. The update process will begin.
 
 __While updating please, do not turn off the module or remove its power, as you can brick the module doing so__.
 
-When the update is finished, the module will remove the _update.bin_ file from the SD and reboot after some time. Now you can remove the SD card and use the updated module normally.
+![alt text](./images/update4.JPG)
+
+![alt text](./images/update5.JPG)
+
+![alt text](./images/update6.JPG)
+
+When the update is finished, the module will remove the _update.bin_ file from the SD card, and reboot after 15 seconds. Now you can remove the SD card and use the updated module normally.
 
 Be careful when removing the card, as it is a tight fit and can take some time. Pull it backwards in small steps grabbing it from the sides.
+
+The SD card should not be left inserted into the module, as it could prevent the RFID reader from operating correctly.
 
 
 
