@@ -2,6 +2,9 @@
 
 ![Elfacun](./images/pic6.jpg)
 
+__News (2022/05/04): Elfacun software version R4 released with some bug fixes: https://github.com/inmbolmie/elfacun/releases/tag/R4
+Installation instructions: [Update Elfacun](./MANUAL.md#update-elfacun-software)__
+
 This is an ongoing hardware project to create a chess module compatible with the old Mephisto modular boards (Exclusive, Modular, München) that will provide connectivity to a wide variety of chess apps and services.
 
 The hardware as well as software developed for it will be eventually published here under the GPL license.
