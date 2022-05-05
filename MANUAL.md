@@ -128,6 +128,8 @@ This is optional and only required if you want to be able to scan your pieces wi
 
 You have been provided with 50 RFID tags that can be programmed and read by the module. You need to modify your pieces to place one tag under each piece.
 
+In case you want to buy more tags, the tag specification is __NTAG213, 18mm diameter__.
+
 The provided tags are 18mm. wide, so they are a good fit for the Exclusive and München original pieces, but maybe a little big for the Modular pieces, specially for the pawns.
 
 ![alt text](./images/tags1.JPG)
