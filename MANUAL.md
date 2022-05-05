@@ -119,7 +119,7 @@ This is NOT OK:
 
 
 
-_While experimenting with Lichess settings, I recommend you have at hand a connected app or the session initiated on the web site, as if you launch challenges repeatedly and don't to play the games, you could be temporarily banned._
+_While experimenting with Lichess settings, I recommend you have at hand a connected app or the session initiated on the web site, as if you launch challenges repeatedly and don't play the games, you could be temporarily banned._
 
 
 ### Piece preparation
@@ -149,9 +149,9 @@ Finally glue the felt back under your piece, and that piece is ready to be used 
 
 ### Piece programming
 
-Once you pieces have been RFID-equipped, place them in the regular stating position on the board and switch on the module. Once the module is started, take one piece and place it near the module. You will hear a triple beep sound that indicates that the piece has been programmed. Place the piece back into its position and repeat the operation with the other 31 pieces.
+Once you pieces have been RFID-equipped, place them in the regular starting position on the board and switch on the module. Once the module is started, take one piece and place it near the module. You will hear a triple beep sound that indicates that the piece has been programmed. Place the piece back into its position and repeat the operation with the other 31 pieces.
 
-This procedure needs to be done only once as the tags keep their programming forever, but the tags can be programmed as times as you want.
+This procedure needs to be done only once as the tags keep their programming forever, but the tags can be programmed as many times as you want.
 
 You can test the piece programming by clearing the board, taking a piece, placing it near the module, then you will hear a single beep sound that indicates that the piece has been scanned. Then place it on the board and the correct piece should show up on the screen.
 
@@ -190,7 +190,7 @@ When promoting a pawn to a queen, advance the pawn to the last row and then take
 
 When promoting a pawn to a piece diffent than a queen, advance the pawn to the last row and then take it off the board. Then you need to scan with the module the piece you want to promote to. Take that piece and place it on the module, you will hear a beep sound to indicate that it has been scanned. Then place it on the board in the appropiate square.
 
-When promoting a pawn to a piece diffent than a queen in a situation where you don't hava a piece to scan (for example, to promote to a knight when you already have your two knights on the board) you can temporary take a similar piece to scan (in the example one og your knights), scan it, place it back and then place any other piece instead of the promoted pawn. That other piece will act as the desired piece.
+When promoting a pawn to a piece diffent than a queen in a situation where you don't hava a piece to scan (for example, to promote to a knight when you already have your two knights on the board) you can temporary take a similar piece to scan (in the example one of your knights), scan it, place it back and then place any other piece instead of the promoted pawn. That other piece will act as the desired piece.
 
 
 ### Take back movements
@@ -203,7 +203,7 @@ You can use a DGT-3000 clock with DGT-compatible apps like Picochess. With Elfac
 
 When you turn on the module, the clock will be automatically detected and used with the apps.
 
-To indicate the correct clock orientation, the clock lever should be up at white's side at module startup. This cannot be changed when the module is already started. If you play with a [reversed position](#play-with-reversed-board) the clock times will be automatically switched to the righ side.
+To indicate the correct clock orientation, the clock lever should be up at white's side at module startup. This cannot be changed when the module is already started. If you play with a [reversed position](#play-with-reversed-board) the clock times will be automatically switched to the right side.
 
 The clock buttons will be functional, as well as the module buttons emulating the clock buttons.
 
@@ -288,7 +288,7 @@ The opponent draw and takeback offers will be shown on the screen as well. You c
 
 When a game ends, the module will show the result and LichessTV mode will automatically start again.
 
-_While experimenting with Lichess settings, I recommend you have at hand a connected app or the session initiated on the web site, as if you launch challenges repeatedly and don't to play the games, you could be temporarily banned._
+_While experimenting with Lichess settings, I recommend you have at hand a connected app or the session initiated on the web site, as if you launch challenges repeatedly and don't play the games, you could be temporarily banned._
 
 
 ### Using Elfacun with Picochess
