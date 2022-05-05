@@ -46,6 +46,7 @@ Modules:
 * Mephisto MMIV
 * Mephisto MMV
 * Mephisto MMV 10Mhz
+* Mephisto Polgar (thanks to Scally for the testing and report)
 
 Boards:
 
