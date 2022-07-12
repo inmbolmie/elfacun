@@ -40,7 +40,7 @@ The passive mode (the possibility of Elfacun operating alongside the original Me
 
 Currently this mode has been tested to work with the following modules and boards:
 
-Modules:
+Modules tested to work:
 
 * Mephisto MMII
 * Mephisto MMIV
@@ -48,10 +48,20 @@ Modules:
 * Mephisto MMV 10Mhz
 * Mephisto Polgar (thanks to Scally for the testing and report)
 
-Boards:
+Modules tested that DO NOT currently work:
 
-* Mephisto Exclusive (with 6V power supply)
-* Mephisto Modular (with 5V power supply)
+* Mephisto Senator (Unknown reason, thanks to Scally for the testing)
+* Mephisto Glasgow (incompatible)
+* Mephisto Amsterdam (incompatible)
+* Mephisto Dallas (incompatible)
+* Mephisto Roma (incompatible)
+
+Boards tested to work:
+
+* Mephisto Exclusive 
+* Mephisto Modular 
+* Mephisto München
+* Mephisto Impos Royal (Thanks to Scally for the testing)
 
 In all the cases **the original modules have been powered from the board**, while Elfacun has to be powered from USB. It is important to power up the Mephisto module before powering up Elfacun, so that Elfacun can detect that the module is operating while it is starting up.
 
