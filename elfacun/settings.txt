@@ -1,0 +1,139 @@
+#Elfacun settings
+#Edit this file (settings.txt) and place it in the root directory of an SD card compatible with SPI mode (most micro-sd aren't)
+#Power up the module with the SD inserted (you don't need to have the module inserted into the board)
+#The settings will be read and stored in permanent memory
+#Remove the SD card and use the module normally
+#If you also want to perform a system update place in the SD card root directory the file "update.bin"
+
+
+#Base MAC address. If not defined, the module will use the default MAC assigned at the factory
+#Bluetooth MAC will be base MAC plus 2
+#
+#base.mac.address=12:34:56:78:9A:BC
+
+
+#Default board mode
+#This is the mode the module will boot at by default
+#Valid values are: A, B
+#Default value is A
+#The serial port will operate at 9600 8N1 in mode A
+#The serial port will operate at 38400 bauds 7O1 in mode B
+#To boot the module in the non-default mode, keep pressed the left-most module button while booting
+#
+mode.default=A
+
+
+#Bluetooth name advertised in mode A
+#Default value is "ELFACUN CHESS"
+#
+#mode.a.bt.advertised.name=ELFACUN CHESS
+
+
+#Bluetooth name advertised in mode B
+#Default value is "ELFACUN CHESS"
+#
+#mode.b.bt.advertised.name=ELFACUN CHESS
+
+
+#Mode A board identification parameters
+#Uncomment to get custom board identification values sent to the driver
+#mode.a.trademark is an arbitrary string
+#serial.number.long has to be exactly 10 characters long
+#serial.number.short has to be exactly 5 characters long
+#version numbers are numbers between 0 and 255
+#
+#mode.a.trademark=Elfacun https://elfacun.eu
+#mode.a.version.major=0
+#mode.a.version.minor=60
+#mode.a.clock.version.major=2
+#mode.a.clock.version.minor=0
+#mode.a.serial.number.long=3.24000000
+#mode.a.serial.number.short=00001
+
+
+#Buzzer enabled
+#Valid values are true, false
+#Default value is true
+#To boot the module with the opposite value, keep pressed the right-most button while booting
+#
+buzzer.enabled=true
+
+
+#LEDS enabled
+#Valid values are true, false
+#Default value is true
+#To boot the module with the opposite value, keep pressed the second right-most button while booting
+#
+leds.enabled=true
+
+
+#REVELATION-II button order
+#Valid values are true, false
+#Default value is false
+#If set to true, the first button will be the "change lever" button when operating in DGT mode, like in the Revelation-II board
+#If set to false, the last button will be the "change lever" button
+#
+buttons.order.revelation=false
+
+
+
+#Lichess mode settings
+#Connection settings, you have to uncomment and complete them in order to be able to connect to lichess
+#That is, you WIFI settings (ssid and password) and your lichess auth token
+#
+#lichess.wifi.ssid=YOUR_WIFI_NAME
+#lichess.wifi.password=YOUR_WIFI_PASSWORD
+#lichess.wifi.authtoken=YOUR_LICHESS_TOKEN
+#
+#
+#Board auto-reverse settings
+#If auto-reverse is enabled and you play as black, the board is automatically reversed so you have to put the black pieces in the first rank
+#If auto-reverse is disabled and you play as black, the board is not automatically reversed so you have to play black from the back of the board unless you manually reverse the board
+#Setting is disabled by default
+#lichess.board.autoinvert=false
+#
+#
+#Play mode settings
+#While not in a game:
+#Buttons 1 to 6 are used to launch a challenge
+#Once launched, you can cancel it pressing any button
+#While in a game:
+#Button 5 pushed twice offers a draw
+#Button 6 pushed twice resigns
+#You can edit the default mode definition. All the games are "standard" chess
+#Game modes under 5 minutes are not allowed being too fast for a physical board
+#
+#lichess.mode.1.time=10
+#lichess.mode.1.increment=0
+#lichess.mode.1.rated=true
+#lichess.mode.1.color=random
+#
+#lichess.mode.2.time=10
+#lichess.mode.2.increment=5
+#lichess.mode.2.rated=true
+#lichess.mode.2.color=random
+#
+#lichess.mode.3.time=15
+#lichess.mode.3.increment=10
+#lichess.mode.3.rated=true
+#lichess.mode.3.color=random
+#
+#lichess.mode.4.time=10
+#lichess.mode.4.increment=0
+#lichess.mode.4.rated=false
+#lichess.mode.4.color=random
+#
+#lichess.mode.5.time=10
+#lichess.mode.5.increment=5
+#lichess.mode.5.rated=false
+#lichess.mode.5.color=random
+#
+#lichess.mode.6.time=15
+#lichess.mode.6.increment=10
+#lichess.mode.6.rated=false
+#lichess.mode.6.color=random
+#
+
+
+
+

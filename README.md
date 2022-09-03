@@ -2,8 +2,11 @@
 
 ![Elfacun](./images/pic6.jpg)
 
-__News (2022/05/04): Elfacun software version R4 released with some bug fixes: [R4 files](https://github.com/inmbolmie/elfacun/releases/tag/R4)
-Installation instructions: [Update Elfacun](./MANUAL.md#update-elfacun-software)__
+__News (2022/05/04): Elfacun software version R4 released with some bug fixes: [R4 files](https://github.com/inmbolmie/elfacun/releases/tag/R4)__ Installation instructions: __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
+
+__News (2022/09/03): Source code and design files released: [Make your own module](https://github.com/inmbolmie/elfacun/SOURCE.md)__
+
+
 
 This is an ongoing hardware project to create a chess module compatible with the old Mephisto modular boards (Exclusive, Modular, München) that will provide connectivity to a wide variety of chess apps and services.
 
@@ -17,7 +20,7 @@ To assist in the release of the first version model, I provide here links to som
 * [Updated compatibility chart](./COMPATIBILITY.md)
 * [Limitations and remarks](./LIMITATIONS.md)
 * [Operation manual](./MANUAL.md)
-
+* [Make your own module](./SOURCE.md)
 
 
 _"DGT", "Millennium" and "Mephisto" are trademarks of their respective owners.
