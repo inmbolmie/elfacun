@@ -4,7 +4,7 @@
 
 __News (2022/05/04): Elfacun software version R4 released with some bug fixes: [R4 files](https://github.com/inmbolmie/elfacun/releases/tag/R4)__ Installation instructions: __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
 
-__News (2022/09/03): Source code and design files released: [Make your own module](https://github.com/inmbolmie/elfacun/SOURCE.md)__
+__News (2022/09/03): Source code and design files released: [Make your own module](./SOURCE.md)__
 
 
 
