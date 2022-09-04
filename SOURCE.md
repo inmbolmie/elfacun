@@ -40,7 +40,7 @@ The boards can be ordered pre-assembled and most of the components are reference
 
 Those are the additional components that you need not included in the BOM file. I cannot advise or endorse a particular provider for the components
 
-* 2x MCP23S17 DIP (throuh hole)
+* 2x MCP23S17 DIP (through hole)
 * 1x AZDelivery ESP32 WROOM-32 (be aware that there are dozens of similar boards, I cannot advise about compatibility for those)
 * 1x ILI9341 2.2 inch screen module
 * 6x PB13 Square 12*12mm SPST momentary buttons
