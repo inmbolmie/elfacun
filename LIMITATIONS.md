@@ -34,59 +34,6 @@ Elfacun uses the on-board USB, WIFI and Bluetooth resources of the ESP32 module,
 
 
 
-### Passive mode (original Mephisto modules)
-
-The passive mode (the possibility of Elfacun operating alongside the original Mephisto modules) should be considered experimental, and it cannot be guaranteed to work beyond what I have been able to test with my limited resources.
-
-Currently this mode has been tested to work with the following modules and boards:
-
-Modules tested to work:
-
-* Mephisto MMII
-* Mephisto MMIV
-* Mephisto MMV
-* Mephisto MMV 10Mhz
-* Mephisto Polgar (thanks to Scally for the testing and report)
-
-Modules tested that DO NOT currently work:
-
-* Mephisto Senator (Unknown reason, thanks to Scally for the testing)
-* Mephisto Glasgow (incompatible)
-* Mephisto Amsterdam (incompatible)
-* Mephisto Dallas (incompatible)
-* Mephisto Roma (incompatible)
-
-Boards tested to work:
-
-* Mephisto Exclusive 
-* Mephisto Modular 
-* Mephisto München
-* Mephisto Impos Royal (Thanks to Scally for the testing)
-
-In all the cases **the original modules have been powered from the board**, while Elfacun has to be powered from USB. It is important to power up the Mephisto module before powering up Elfacun, so that Elfacun can detect that the module is operating while it is starting up.
-
-Elfacun needs dedicated hardware to be able to capture the communication between the original module and the board. That data capture is timing-critical, and different modules will have different timings that cannot be predicted and have to be measured on the real hardware. The board scanning and LED driving signals needs also to be differentiated for proper operation, and modules beyond those that have been tested could operate differently, and be not compatible with the current implementation.
-
-There are a couple of potentiometers on-board that can be adjusted to try to compensate for timing differences up to a point but that doesn't provide a total guarantee that you will be able to adjust them to operate with any module.
-
-Te critical timings are:
-
-* Short delay, that is the delay from the time row data is available to the time we can start to capture column data
-* Long delay, that is the time we will wait since we end capturing column data until we can start the capture process for the following row.
-
-That delays can be adjusted with the RV2 and RV3 variable resistors
-
-![alt text](./images/resistors.jpeg)
-
-The default adjusted values are:
-
-* RV2: 10Kohm (long delay)
-* RV3: 3Kohm (short delay)
-
-I would like to have the possibility to test mode modules in the future, but then original modules are expensive, specially 16 and 32 bit modules so it won't be easy to be able to get a significant number of them to test.
-
-
-
 ### Passive mode operation
 
 Pasive mode is disabled while in Lichess mode, as it would be against their rules to receive computer assistance from a module while in a game.
@@ -111,6 +58,11 @@ The Lichess TV stream does not contain game result data, and it would be complic
 
 
 Software update through USB is not directly supported. Part of the ESP32 module programming hardware has been disabled due to incompatibilities with some apps in Windows when connecting to them through USB. If you ever want to program the ESP32 via USB you would have to manually enter programming mode and reset the module. This should not be a problem to regular users because the module supports software update using the SD card reader.
+
+
+### V2 PCB
+
+The first revision of V2 PCB has two patched mistakes that doesn't affect the module functionality, and will be fixed in subsequent releases.
 
 
 ### PCB

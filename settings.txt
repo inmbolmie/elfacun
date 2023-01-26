@@ -67,6 +67,28 @@ buzzer.enabled=true
 leds.enabled=true
 
 
+#DUAL LEDS enabled (Only V2 modules)
+#Valid values are true, false
+#Default value is false
+#When a V2 module starts in passive mode and this parameter is enables, the module will scan for the
+#presence of other Elfacun module (V1 or V2) using BLE. If it finds it, it will start a BLE connection to
+#relay its LED status, so both modules will be able to control the board LEDs
+#It is disabled by default as it only makes sense if you have two modules and with the feature disabled the
+#passive mode startup will be faster
+#
+leds.dual.enabled=false
+
+
+#REVELATION-II button order
+#Valid values are true, false
+#Default value is false
+#If set to true, the first button will be the "change lever" button when operating in DGT mode, like in the Revelation-II board
+#If set to false, the last button will be the "change lever" button
+#
+buttons.order.revelation=false
+
+
+
 #Lichess mode settings
 #Connection settings, you have to uncomment and complete them in order to be able to connect to lichess
 #That is, you WIFI settings (ssid and password) and your lichess auth token
@@ -125,5 +147,10 @@ leds.enabled=true
 #
 
 
-
-
+#Screen brightness (Only V2 modules)
+#Only for V2 modules, will be ignored on V1 modules
+#Overrides the stored default screen brightness
+#Valid values: 5-255
+#Default value: 64
+#
+screen.brightness.default = 64

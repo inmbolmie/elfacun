@@ -2,22 +2,32 @@
 
 ![Elfacun](./images/pic6.jpg)
 
-__News (2022/05/04): Elfacun software version R4 released with some bug fixes: [R4 files](https://github.com/inmbolmie/elfacun/releases/tag/R4)__ Installation instructions: __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
 
-__News (2022/09/03): Source code and design files released: [Make your own module](./SOURCE.md)__
+__News (2023/01/28): Elfacun hardware version 2 released with new features and improved compatibility with original modules:__ Links: ----- __[V2 features](./DESCRIPTION.md#features)__ ----- __[V2 manual](./MANUAL.md#new-v1-and-v2-features)__ ----- __[V2 compatibility](./COMPATIBILITY.md#v2-with-original-mephisto-modules)__
+
+
+![V2](./images/V2_SM.JPG)
+
+__News (2023/01/28): Brocoli battery power module for Elfacun:__ Link: ----- __[Brocoli power module](./BROCOLI.md)__
+
+
+![Brocoli](./images/B_SMALL.JPG)
+
+__News (2022/05/04): Elfacun software version R4 released with some bug fixes: [R4 files](https://github.com/inmbolmie/elfacun/releases/tag/R4)__ Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
+
+__News (2022/09/03): Source code and design files released: ----- [Make your own module](./SOURCE.md)__
 
 
 
 This is an ongoing hardware project to create a chess module compatible with the old Mephisto modular boards (Exclusive, Modular, München) that will provide connectivity to a wide variety of chess apps and services.
 
-The hardware as well as software developed for it will be eventually published here under the GPL license.
+The hardware as well as software developed for it are published here under the GPL license.
 
-Currently the project is in the pre-release phase. I have a first production model completed with full functionality that will be distributed to selected users. After that I expect to publish the full project and proceed with further development to support or expand the existing user base.
+To assist in the release of the module, I provide here links to some basic documentation:
 
-To assist in the release of the first version model, I provide here links to some basic documentation:
-
-* [Module description and features](./DESCRIPTION.md)
-* [Updated compatibility chart](./COMPATIBILITY.md)
+* [V1 and V2 modules description and features](./DESCRIPTION.md)
+* [Brocoli power module](./BROCOLI.md)
+* [Compatibility chart](./COMPATIBILITY.md)
 * [Limitations and remarks](./LIMITATIONS.md)
 * [Operation manual](./MANUAL.md)
 * [Make your own module](./SOURCE.md)

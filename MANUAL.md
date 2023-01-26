@@ -25,7 +25,11 @@
 17. [Adjusting buzzer volume](#adjusting-buzzer-volume)
 18. [Update Elfacun Software](#update-elfacun-software)
 19. [Using Elfacun with Graham O'Neill drivers](#using-elfacun-with-graham-oneill-drivers)
-
+19. [Force passive mode](force-passive-mode)
+19. [Hold mode](#hold-mode)
+19. [Dual leds mode](#dual-leds-mode)
+19. [Adjust screen brightness](#adjust-screen-brightness)
+19. [Enable or disable power from board](#enable-or-disable-power-from-board)
 
 ### Powering the module
 
@@ -430,3 +434,72 @@ Elfacun is compatible with Grahan O'Neill drivers via USB, Bluetooth and BLE. Yo
 
 _"DGT", "Millennium" and "Mephisto" are trademarks of their respective owners.
 All the trademarks are used nominatively to indicate compatibility, and do not indicate affiliation to or endorsement by the trademark owners._
+
+
+## New V1 and V2 features
+
+### Force passive mode
+
+You can force passive mode if you start the module keeping the fourth leftmost button pressed. You can release the button when you see the "mode logo" screen ("mode a" or "mode b").
+
+Forcing passive mode is useful if Elfacun has problems to identify an external module, or if the external module freezes on startup.
+
+### Hold mode
+
+You can enter "hold mode" by keeping at any time for a couple of seconds the second leftmost button pressed. While on hold mode, the module will stop scanning the board, keep the position and a message will be displayed that indicates that the module can be removed from the board.
+
+![Hold mode](./images/HOLD_MODE.JPG)
+
+The module has to be connected to power with the USB cable to be able to be safely removed.
+
+When you insert the module back in the board you can re-enable board scanning by pressing any button. When inserting back the module make sure that the pieces over the board are still on the same positions.
+
+
+## V2 only features
+
+
+### Dual leds mode
+
+When you use two Elfacun modules compatible with this feature in the same board, the passive module will recognize the active one on startup and it will send to it LED updates via BLE during the game. That way both chess apps willbe able to indicate their moves on the board leds.
+
+If you are using V1 and V2 modules you have to start V1 first. If using only V2 modules the boot order is irrelevant .
+
+You have to make sure that no app connects to the modules via BLE before both modules are fully started. If that happens the feature won't work but the modules will work otherwise fine. When the connection is established you will see an "X" LED pattern for a couple of seconds, then all the LEDs will turn off. After that you are free to connect apps to the modules the way you want.
+
+You have to enable this feature using a new parameter on the SD card's `settings.txt` file. This feature is disabled by default because it makes the module startup a little slower.
+
+    #DUAL LEDS enabled (Only V2 modules)
+    #Valid values are true, false
+    #Default value is false
+    #When a V2 module starts in passive mode and this parameter is enables, the module will scan for the
+    #presence of other Elfacun module (V1 or V2) using BLE. If it finds it, it will start a BLE connection to
+    #relay its LED status, so both modules will be able to control the board LEDs
+    #It is disabled by default as it only makes sense if you have two modules and with the feature disabled the
+    #passive mode startup will be faster
+    #
+    leds.dual.enabled=false
+
+
+
+### Adjust screen brightness
+
+* To increase screen brightness keep pressed the module's rightmost button.
+* To decrease screen brightness keep pressed the module's leftmost button.
+* The setting will be stored and remembered on startup.
+
+You can override the stored setting using a new parameter on the SD card's `settings.txt` file.
+
+    #Screen brightness (Only V2 modules)
+    #Only for V2 modules, will be ignored on V1 modules
+    #Overrides the stored default screen brightness
+    #Valid values: 5-255
+    #Default value: 64
+    #
+    screen.brightness.default = 64
+
+
+### Enable or disable power from board
+
+On V2 modules you can enable power from board installing a jumper clearly marked on the user-accesible side of the PCB.
+
+On V1 modules follow the instructions [here](./BROCOLI.md#using-brocoli-with-v1-modules)
