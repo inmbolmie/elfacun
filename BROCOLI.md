@@ -31,7 +31,7 @@ The module features are:
 
 Brocoli is provided without a power bank, the user has to provide his own.
 
-The main limitation for choosing a power bank is that it has to fit inside the Brocoli module. The maximum dimensions for the back are:
+The main limitation for choosing a power bank is that it has to fit inside the Brocoli module. The maximum dimensions for the bank are:
 
 * Width: 68mm
 * Depth: 106mm
