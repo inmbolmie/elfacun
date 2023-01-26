@@ -39,7 +39,7 @@ The main limitation for choosing a power bank is that it has to fit inside the B
 
 If the power bank exceeds any of these dimensions it may not fit inside Brocoli, or Brocoli may not fit inside the board.
 
-Most 5.000Mah power banks will fit on these dimensions, but check always anyway. Most 10.000Mah power banks won0t fix except for a few that will be a tight fit.
+Most 5.000Mah power banks will fit on these dimensions, but check always anyway. Most 10.000Mah power banks won't fix except for a few that will be a tight fit.
 
 The power bank has to provide a USB-A connector. Also it is better if the bank has the A-type connector sided, as showed on this photo
 
@@ -47,11 +47,11 @@ The power bank has to provide a USB-A connector. Also it is better if the bank h
 
 If the connector is centered it may work anyway but you may have to cut a zip tie on the back of the module to be able to get more play for the cable. The USB cable on the module is not detachable.
 
-The power bank has to be able to provide at least 2 amps at full load (10W). If you are using only Elfacun 1 amp is enough but you won't be able to power the more power-hungry original modules with that, just Elfacun.
+The power bank has to be able to provide at least 2 amps at full load (10W) to be on the safe side. If you are using only Elfacun 1 amp is more than enough but you won't be able to power the more power-hungry original modules with that, just Elfacun.
 
 It is better if the power bank is of the type where you don't need to push a button to start it. That way you can just use the power button on the Brocoli module to control the power bank.
 
-It is also a desirable feature that the power bank does not swith off with small loads. Some power banks switch them off if they don't detect a high load from a charging device like a phone.
+It is also a desirable feature that the power bank does not swith off with small loads. Some power banks switch themselves off if they don't detect a high load from a charging device like a phone.
 
 
 ## Tested power banks
