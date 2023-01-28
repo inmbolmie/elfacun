@@ -8,6 +8,8 @@
 
 Link to the updated compatibility list:
 
+__Tested on 2023/01/28 the Chess.com Android app now seems to be fully functional with Elfacun__
+
 [https://docs.google.com/spreadsheets/d/12Uv9kzwfK2hOjxCerdxXKaBquyXnUyqvHLZR6gPWI9A/edit?usp=sharing](https://docs.google.com/spreadsheets/d/12Uv9kzwfK2hOjxCerdxXKaBquyXnUyqvHLZR6gPWI9A/edit?usp=sharing)
 
 ![alt text](./images/compatibility.png)
