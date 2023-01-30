@@ -3,6 +3,9 @@
 ![Elfacun](./images/pic6.jpg)
 
 
+__News (2023/01/30): Elfacun software version R5 released with some bug fixes:__ Link: ----- __[R5 files](https://github.com/inmbolmie/elfacun/releases/tag/R5)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
+
+
 __News (2023/01/28): Elfacun hardware version 2 released with new features and improved compatibility with original modules:__ Links: ----- __[V2 features](./DESCRIPTION.md#features)__ ----- __[V2 manual](./MANUAL.md#new-v1-and-v2-features)__ ----- __[V2 compatibility](./COMPATIBILITY.md#v2-with-original-mephisto-modules)__
 
 
