@@ -98,52 +98,65 @@ buttons.order.revelation=false
 #lichess.wifi.authtoken=YOUR_LICHESS_TOKEN
 #
 #
-#Board auto-reverse settings
-#If auto-reverse is enabled and you play as black, the board is automatically reversed so you have to put the black pieces in the first rank
+#Lichess board auto-reverse settings
+#If auto-reverse is enabled and you play as black, the board is automatically reversed so you have to put the black pieces on the first rank
 #If auto-reverse is disabled and you play as black, the board is not automatically reversed so you have to play black from the back of the board unless you manually reverse the board
-#Setting is disabled by default
+#Setting is disabled by default (false)
 #lichess.board.autoinvert=false
 #
 #
-#Play mode settings
+#Lichess play mode settings
 #While not in a game:
 #Buttons 1 to 6 are used to launch a challenge
 #Once launched, you can cancel it pressing any button
 #While in a game:
+#Button 4 pushed twice offers take back
 #Button 5 pushed twice offers a draw
 #Button 6 pushed twice resigns
 #You can edit the default mode definition. All the games are "standard" chess
-#Game modes under 5 minutes are not allowed being too fast for a physical board
+#Game modes under 5 minutes are not allowed by Lichess being too fast for a physical board
+#Game mode variables are:
+# time -> Game time in minutes
+# time -> Increment per move in seconds
+# rated -> if the game is rated ("true") or unrated ("false")
+# color -> your pieces color ("white", "black" or "random")
+# elo -> The desired ELO range of the opponents ("none" to disable, or a range like "1500-1800")
 #
 #lichess.mode.1.time=10
 #lichess.mode.1.increment=0
 #lichess.mode.1.rated=true
 #lichess.mode.1.color=random
+#lichess.mode.1.elo=none
 #
 #lichess.mode.2.time=10
 #lichess.mode.2.increment=5
 #lichess.mode.2.rated=true
 #lichess.mode.2.color=random
+#lichess.mode.2.elo=none
 #
 #lichess.mode.3.time=15
 #lichess.mode.3.increment=10
 #lichess.mode.3.rated=true
 #lichess.mode.3.color=random
+#lichess.mode.3.elo=none
 #
 #lichess.mode.4.time=10
 #lichess.mode.4.increment=0
 #lichess.mode.4.rated=false
 #lichess.mode.4.color=random
+#lichess.mode.4.elo=none
 #
 #lichess.mode.5.time=10
 #lichess.mode.5.increment=5
 #lichess.mode.5.rated=false
 #lichess.mode.5.color=random
+#lichess.mode.5.elo=none
 #
 #lichess.mode.6.time=15
 #lichess.mode.6.increment=10
 #lichess.mode.6.rated=false
 #lichess.mode.6.color=random
+#lichess.mode.6.elo=none
 #
 
 

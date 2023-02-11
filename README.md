@@ -3,6 +3,8 @@
 ![Elfacun](./images/pic6.jpg)
 
 
+__News (2023/02/08): Elfacun software version R6 released with opponent ELO range on Lichess challenges:__ Link: ----- __[R6 files](https://github.com/inmbolmie/elfacun/releases/tag/R6)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
+
 __News (2023/01/30): Elfacun software version R5 released with some bug fixes:__ Link: ----- __[R5 files](https://github.com/inmbolmie/elfacun/releases/tag/R5)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
 
 

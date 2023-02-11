@@ -87,7 +87,7 @@ The values you can edit in that file are:
 * __buzzer.enabled__: Enable or disable sound by default
 * __leds.enabled__: Enable or disable the board LEDs by default
 
-Some parameters that modify how Elfacun identifies itself in mode A:
+Some parameters that modify how Elfacun identifies itself in mode A. Usually you won't need to change this:
 
 * __mode.a.trademark__
 * __mode.a.version.major__
@@ -110,6 +110,7 @@ Settings to customize each of the 6 pre-defined challenges for Lichess. When in 
 * __lichess.mode.X.increment__
 * __lichess.mode.X.color__
 * __lichess.mode.X.rated__
+* __lichess.mode.X.elo__
 
 A more detailed description and a list of valid values for each parameter are included in the sample [settings.txt](./settings.txt) file
 
@@ -293,6 +294,20 @@ The opponent draw and takeback offers will be shown on the screen as well. You c
 When a game ends, the module will show the result and LichessTV mode will automatically start again.
 
 _While experimenting with Lichess settings, I recommend you have at hand a connected app or the session initiated on the web site, as if you launch challenges repeatedly and don't play the games, you could be temporarily banned._
+
+On Lichess mode there is no "piece recognition" as such. The pieces simply have to be in the same positions that the screen shows, that is the position on Lichess servers.
+
+The LED's flash:
+
+* To indicate an incoming movement (origin square, destination square)
+* When a piece is on a square that should be empty
+* When no piece is on a square that should be occupied
+
+On Lichess mode your movements are not instantly reflected on the screen because the screen is updated only after the new position is received from Lichess and the confirmed position received back by the module. A good WIFI signal strength is recommended to make this process faster.
+
+Note that sometimes if you make a valid move, even if the rest of the position is bad on the board, the move will be accepted and made on Lichess. Afterwards the true position on Lichess will be reflected on the screen, as the screen has to show what is on Lichess servers. So it is important while on Lichess mode to be careful moving your pieces and the opponent pieces as you are playing against humans and all the moves you make are definitive.
+
+
 
 
 ### Using Elfacun with Picochess
