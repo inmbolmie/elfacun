@@ -25,11 +25,14 @@
 17. [Adjusting buzzer volume](#adjusting-buzzer-volume)
 18. [Update Elfacun Software](#update-elfacun-software)
 19. [Using Elfacun with Graham O'Neill drivers](#using-elfacun-with-graham-oneill-drivers)
-19. [Force passive mode](force-passive-mode)
-19. [Hold mode](#hold-mode)
-19. [Dual leds mode](#dual-leds-mode)
-19. [Adjust screen brightness](#adjust-screen-brightness)
-19. [Enable or disable power from board](#enable-or-disable-power-from-board)
+20. [Force passive mode](force-passive-mode)
+21. [Hold mode](#hold-mode)
+22. [Adjust BLE power](#adjust-ble-power)
+23. [Adjust sound tones](#adjust-sound-tones)
+24. [On-screen led indications](#on-screen-led-indications)
+25. [Dual leds mode](#dual-leds-mode)
+26. [Adjust screen brightness](#adjust-screen-brightness)
+27. [Enable or disable power from board](#enable-or-disable-power-from-board)
 
 ### Powering the module
 
@@ -469,6 +472,72 @@ The module has to be connected to power with the USB cable to be able to be safe
 
 When you insert the module back in the board you can re-enable board scanning by pressing any button. When inserting back the module make sure that the pieces over the board are still on the same positions.
 
+__If you have software version R7 or higher as a plus if you turn off the module while on "hold mode" it will remember and restore the position on the next module startup, as long as you don't move the pieces on the board while the module is off__. To use this feature you have to remove any SD card you have inserted in the module because the stored position will be deleted on startud in that case.
+
+
+### Adjust BLE power
+
+With software release R7 or higher you can now adjust the BLE signal power on the SD configuration adding this section:
+
+    #Bluetooth power
+    #Set the ble and bluetooth classic power level
+    #it can help working with devices that are far away from the board
+    #It is not recommended to change this value unless you have BT reliability issues
+    #The valid values are 0-7
+    #The default value is 5
+    #bluetooh.power=0  -----> Corresponding to -12dbm
+    #bluetooh.power=1  -----> Corresponding to  -9dbm
+    #bluetooh.power=2  -----> Corresponding to  -6dbm
+    #bluetooh.power=3  -----> Corresponding to  -3dbm
+    #bluetooh.power=4  -----> Corresponding to   0dbm
+    #bluetooh.power=5  -----> Corresponding to  +3dbm
+    #bluetooh.power=6  -----> Corresponding to  +6dbm
+    #bluetooh.power=7  -----> Corresponding to  +9dbm
+    #
+    #bluetooth.power=5
+
+The default signal level is 5 for +3dbm. A higher level could help getting more range for a BLE connection. It is not recommended to change this value unless you have any problem with BLE range. The default level should work fine for devices on the same room as the module.
+
+
+### Adjust sound tones
+
+With software release R7 or higher you can adjust the tone and duration of the sounds emitted by the module on the SD configuration adding this section:
+
+    #Buzzer tones setup
+    #You can change the frequency and duration of the sound tones:
+    #Tone 1 is piece raise
+    #Tone 2 is piece placement
+    #Tone 3 is led sound for passive mode
+    #Frequency is in hertzs
+    #Duration is in milliseconds
+    #
+    #buzzer.tone.1.frequency=2000
+    #buzzer.tone.1.duration=100
+    #
+    #buzzer.tone.2.frequency=1000
+    #buzzer.tone.2.duration=100
+    #
+    #buzzer.tone.3.frequency=1500
+    #buzzer.tone.3.duration=20
+
+
+### On screen LED indications
+
+
+With software release R7 or higher when the module is operating in passive mode alongside an original module, the flashing LEDs from the remote app connected to Elfacun will be indicated on-screen as flashing squares and sounds.
+
+When Elfacun is used with an original module, the original module is in full control of the board leds so it is not possible to show the remote app LEDs onboard. Now you will be able to watch them on-screen so that you can have remote movement indications without looking at the remote app interface.
+
+If you don't want the sounds that indicate the remote flashing leds you can disable them on the SD `settings.txt` adding or modifying this section:
+
+    #Buzzer enabled for passive led indications on screen
+    #Valid values are true, false
+    #Default value is true
+    #When in passive mode with original modules Elfacun cannot use the on-board leds
+    #so it uses the screen to indicate incoming led information. When this is enables the led
+    #indications on-screen are accompanied by sounds
+    #
+    buzzer.enabled.passive.led=true
 
 ## V2 only features
 

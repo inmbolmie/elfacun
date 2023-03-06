@@ -7,6 +7,7 @@
 
 
 #Base MAC address. If not defined, the module will use the default MAC assigned at the factory
+#so it is not recommended to modify it unless you have any problem
 #Bluetooth MAC will be base MAC plus 2
 #
 #base.mac.address=12:34:56:78:9A:BC
@@ -57,6 +58,34 @@ mode.default=A
 #To boot the module with the opposite value, keep pressed the right-most button while booting
 #
 buzzer.enabled=true
+
+
+#Buzzer enabled for passive led indications on screen
+#Valid values are true, false
+#Default value is true
+#When in passive mode with original modules Elfacun cannot use the on-board leds
+#so it uses the screen to indicate incoming led information. When this is enables the led
+#indications on-screen are accompanied by sounds
+#
+buzzer.enabled.passive.led=true
+
+
+#Buzzer tones setup 
+#You can change the frequency and duration of the sound tones:
+#Tone 1 is piece raise
+#Tone 2 is piece placement
+#Tone 3 is led sound for passive mode
+#Frequency is in hertzs
+#Duration is in milliseconds
+#
+#buzzer.tone.1.frequency=2000
+#buzzer.tone.1.duration=100
+#
+#buzzer.tone.2.frequency=1000
+#buzzer.tone.2.duration=100
+#
+#buzzer.tone.3.frequency=1500
+#buzzer.tone.3.duration=20
 
 
 #LEDS enabled
@@ -167,3 +196,23 @@ buttons.order.revelation=false
 #Default value: 64
 #
 screen.brightness.default = 64
+
+#Bluetooth power
+#Set the ble and bluetooth classic power level
+#it can help working with devices that are far away from the board
+#It is not recommended to change this value unless you have BT reliability issues
+#The valid values are 0-7
+#The default value is 5
+#bluetooh.power=0  -----> Corresponding to -12dbm
+#bluetooh.power=1  -----> Corresponding to  -9dbm
+#bluetooh.power=2  -----> Corresponding to  -6dbm
+#bluetooh.power=3  -----> Corresponding to  -3dbm
+#bluetooh.power=4  -----> Corresponding to   0dbm
+#bluetooh.power=5  -----> Corresponding to  +3dbm
+#bluetooh.power=6  -----> Corresponding to  +6dbm
+#bluetooh.power=7  -----> Corresponding to  +9dbm
+#
+#bluetooth.power=5
+
+
+

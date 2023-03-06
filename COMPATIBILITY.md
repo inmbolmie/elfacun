@@ -164,11 +164,6 @@ Picochess works fine with Elfacun but you will have to force the Revelation-II m
 [Using Elfacun with Picochess](MANUAL.md#using-elfacun-with-picochess)
 
 
-### Chess.com (Android)
-
-Chess.com app is weird, because it apparently only allows to use the board in rated games against random opponents, so it makes testing almost impossible and currently doesn't seem to work at all. If they change this behaviour in the future I will look again into it.
-
-
 ### Rabbitplugin (Windows)
 
 Some apps like Shredder Classic don't work at all interfacing Elfacun with Rabbitplugin, but work fine with the replacement Graham O'Neill DGT or Millennium drivers. You can get them here:
