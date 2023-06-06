@@ -2,6 +2,7 @@
 
 ![Elfacun](./images/pic6.jpg)
 
+__News (2023/06/07): Elfacun software version R8 released with support for the new _Diablillo_ device:__ Link: ----- __[R8 files](https://github.com/inmbolmie/elfacun/releases/tag/R8)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
 
 __News (2023/03/05): Elfacun software version R7 released with on-screen LED indications in passive mode, board position storage and customizable sound and BLE power level:__ Link: ----- __[R7 files](https://github.com/inmbolmie/elfacun/releases/tag/R7)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
 
