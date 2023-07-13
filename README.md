@@ -2,6 +2,8 @@
 
 ![Elfacun](./images/pic6.jpg)
 
+__News (2023/07/13): Elfacun software version R10 released with bug fixes:__ Link: ----- __[R10 files](https://github.com/inmbolmie/elfacun/releases/tag/R10)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
+
 __News (2023/06/12): Elfacun software version R9 released with bug fixes:__ Link: ----- __[R9 files](https://github.com/inmbolmie/elfacun/releases/tag/R9)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
 
 __News (2023/06/07): Elfacun software version R8 released with support for the new _Diablillo_ device:__ Link: ----- __[R8 files](https://github.com/inmbolmie/elfacun/releases/tag/R8)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
