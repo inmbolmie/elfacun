@@ -2,6 +2,8 @@
 
 ![Elfacun](./images/pic6.jpg)
 
+__News (2023/09/16): Elfacun software version R11 released with new Chessnut-compatible mode:__ Link: ----- __[R11 files](https://github.com/inmbolmie/elfacun/releases/tag/R11)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
+
 __News (2023/07/13): Elfacun software version R10 released with bug fixes:__ Link: ----- __[R10 files](https://github.com/inmbolmie/elfacun/releases/tag/R10)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
 
 __News (2023/06/12): Elfacun software version R9 released with bug fixes:__ Link: ----- __[R9 files](https://github.com/inmbolmie/elfacun/releases/tag/R9)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
@@ -45,5 +47,5 @@ To assist in the release of the module, I provide here links to some basic docum
 * [Make your own module](./SOURCE.md)
 
 
-_"DGT", "Millennium" and "Mephisto" are trademarks of their respective owners.
+_"DGT", "Millennium", "Mephisto" and "Chessnut" are trademarks of their respective owners.
 All the trademarks are used nominatively to indicate compatibility, and do not indicate affiliation to or endorsement by the trademark owners._

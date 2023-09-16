@@ -72,5 +72,5 @@ The first version PCB has two patched mistakes that doesn't affect the module fu
 * The buzzer transistor had to be reversed as it was installed in the wrong orientation
 * There is a patch wire that enables the bus switches directly from +5V. It was found during testing that the original 3,3V signal was not high enough to enable them in some cases (when using on 6V board power supplies).
 
-_"DGT", "Millennium" and "Mephisto" are trademarks of their respective owners.
+_"DGT", "Millennium", "Mephisto" and "Chessnut" are trademarks of their respective owners.
 All the trademarks are used nominatively to indicate compatibility, and do not indicate affiliation to or endorsement by the trademark owners._

@@ -15,7 +15,7 @@
 
 #Default board mode
 #This is the mode the module will boot at by default
-#Valid values are: A, B
+#Valid values are: A, B, C
 #Default value is A
 #The serial port will operate at 9600 8N1 in mode A
 #The serial port will operate at 38400 bauds 7O1 in mode B
@@ -34,6 +34,12 @@ mode.default=A
 #Default value is "ELFACUN CHESS"
 #
 #mode.b.bt.advertised.name=ELFACUN CHESS
+
+
+#Bluetooth name advertised in mode C
+#Default value is "ELFACUN CHESS"
+#
+#mode.c.bt.advertised.name=ELFACUN CHESS
 
 
 #Mode A board identification parameters
@@ -196,6 +202,16 @@ buttons.order.revelation=false
 #Default value: 64
 #
 screen.brightness.default = 64
+
+
+#Disable mode B checksum
+#On R8 release checksum checking on incoming mode B messages has been enabled by default
+#You can optionally disable it in case it is problematic with any app
+#Valid values are true, false
+#Default value is false
+#
+#parity.check.disabled=false
+
 
 #Bluetooth power
 #Set the ble and bluetooth classic power level

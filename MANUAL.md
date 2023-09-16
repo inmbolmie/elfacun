@@ -30,9 +30,10 @@
 22. [Adjust BLE power](#adjust-ble-power)
 23. [Adjust sound tones](#adjust-sound-tones)
 24. [On-screen led indications](#on-screen-led-indications)
-25. [Dual leds mode](#dual-leds-mode)
-26. [Adjust screen brightness](#adjust-screen-brightness)
-27. [Enable or disable power from board](#enable-or-disable-power-from-board)
+25. [Chessnut mode](#chessnut-mode)
+26. [Dual leds mode](#dual-leds-mode)
+27. [Adjust screen brightness](#adjust-screen-brightness)
+28. [Enable or disable power from board](#enable-or-disable-power-from-board)
 
 ### Powering the module
 
@@ -539,6 +540,18 @@ If you don't want the sounds that indicate the remote flashing leds you can disa
     #
     buzzer.enabled.passive.led=true
 
+
+### Chessnut mode
+
+With software release R11 or higher you can enable at startup a new mode of operation "Mode C". While on "Mode C" any Chessnut-compatible app should be able to connect to the module via Bluetooth BLE.
+
+To start the module in "Mode C" Keep pressed simultaneously the first and second buttons while booting.
+
+While on "Mode C" you won't be able to connect to the module using the Chesslink protocol.
+
+Then once started you should be able to connect using BLE from any Chessnut-compatible app.
+
+
 ## V2 only features
 
 
@@ -587,3 +600,7 @@ You can override the stored setting using a new parameter on the SD card's `sett
 On V2 modules you can enable power from board installing a jumper clearly marked on the user-accesible side of the PCB.
 
 On V1 modules follow the instructions [here](./BROCOLI.md#using-brocoli-with-v1-modules)
+
+
+_"DGT", "Millennium", "Mephisto" and "Chessnut" are trademarks of their respective owners.
+All the trademarks are used nominatively to indicate compatibility, and do not indicate affiliation to or endorsement by the trademark owners._

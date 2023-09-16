@@ -170,5 +170,5 @@ Some apps like Shredder Classic don't work at all interfacing Elfacun with Rabbi
 
 [https://goneill.co.nz/chess.php](https://goneill.co.nz/chess.php)
 
-_"DGT", "Millennium" and "Mephisto" are trademarks of their respective owners.
+_"DGT", "Millennium", "Mephisto" and "Chessnut" are trademarks of their respective owners.
 All the trademarks are used nominatively to indicate compatibility, and do not indicate affiliation to or endorsement by the trademark owners._

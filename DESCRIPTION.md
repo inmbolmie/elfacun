@@ -35,6 +35,7 @@ __V2 and V1 features:__
 * Plug and play. The module is configurable but basic operation can be performed without any configuration.
 * Compatible with most DGT-compatible apps.
 * Compatible with most ChessLink-compatible apps.
+* Compatible with most Chessnut-compatible apps (starting on R11 firmware)
 * USB Connectivity to chess apps.
 * Bluetooth Connectivity to chess apps.
 * Bluetooth Low Energy (BLE) connectivity to chess apps.
@@ -60,5 +61,5 @@ Video demonstrating the module functionality:
 ![Elfacun](./images/pic4.jpg)
 
 
-_"DGT", "Millennium" and "Mephisto" are trademarks of their respective owners.
+_"DGT", "Millennium", "Mephisto" and "Chessnut" are trademarks of their respective owners.
 All the trademarks are used nominatively to indicate compatibility, and do not indicate affiliation to or endorsement by the trademark owners._
