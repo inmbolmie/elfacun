@@ -266,6 +266,8 @@ After configuring that parameters, when starting in Lichess mode, the module wil
 
 You can launch a challenge from LichessTV pressing twice one of the six module buttons. Every button represents one play mode that can be configured by the user via _settings.txt_ and SD card.
 
+Only "rapid" and "classic" games are supported on the Lichess board interface. The "blitz", "bullet" or "correspondence" games cannot be played on Elfacun and won't be shown on the module, even if you start a game on another interface. Also only the "standard" chess games are supported.
+
 For example, to configure the first button to lauch a rated 10+0 game as rando color you will configure in _settings.txt_:
 
     lichess.mode.X.time=10
@@ -295,13 +297,13 @@ The opponent draw and takeback offers will be shown on the screen as well. You c
 ![alt text](./images/draw.jpeg)
 
 
-When a game ends, the module will show the result and LichessTV mode will automatically start again.
+When a game ends, the module will show the result and LichessTV mode will automatically start again. You have to reach the final position for that to happen or press any module button after the game result has been shown.
 
-_While experimenting with Lichess settings, I recommend you have at hand a connected app or the session initiated on the web site, as if you launch challenges repeatedly and don't play the games, you could be temporarily banned._
+_While experimenting with Lichess settings, I recommend you have at hand a connected app or the session initiated on the web site, as if you launch challenges repeatedly and don't play the games, you could be temporarily banned. Also if you want to accept or offer a rematch you won't have time to set-up the board and make the first movement before the game is cancelled, so in that case you have to make the first move on the other interface and then you can set-up the board with that position that will be indicated on the screen.
 
 On Lichess mode there is no "piece recognition" as such. The pieces simply have to be in the same positions that the screen shows, that is the position on Lichess servers.
 
-The LED's flash:
+The LEDs will flash:
 
 * To indicate an incoming movement (origin square, destination square)
 * When a piece is on a square that should be empty
@@ -311,7 +313,30 @@ On Lichess mode your movements are not instantly reflected on the screen because
 
 Note that sometimes if you make a valid move, even if the rest of the position is bad on the board, the move will be accepted and made on Lichess. Afterwards the true position on Lichess will be reflected on the screen, as the screen has to show what is on Lichess servers. So it is important while on Lichess mode to be careful moving your pieces and the opponent pieces as you are playing against humans and all the moves you make are definitive.
 
+**On-screen Wifi signal quality indicator**
 
+It is vital for the module to operate properly to have proper Wifi signal strength. This is a particular device in the sense that the Wifi antenna is located very inconveniently, as it lies flat inside the module that is inserted in the board under a very thick chessboard PCB that blocks part of the signal coming from and going to the Wifi access point. So in general you can expect a much lower range for the module than you can get on other devices like your mobile phone and so.
+
+
+![wifi quality](./images/wifi.jpg)
+
+So to have good feedback about the signal quality the module is experiencing I have added an on-screen signal quality indicator when on Lichess mode. It is a colored dot next to the lower part of the board picture:
+
+- Green dot indicates good signal
+- Orange dot indicates weak signal
+- Red dot indicated bad or intermittent signal
+
+
+This way you will be able to distinguish if an issue is just a signal quality issue and you just have to be closer to your access point, or if it is something else:
+
+You objective should be to get a green most of the time, mostly green with some orange will be OK
+Mostly orange means you may have issues, the module can operate slower than ideal.
+If you see red, you most likely will have problems. If you can’t get closer to the access point you should consider switching to an external app like White Pawn, or installing a Wifi repeater in the room where you have the board.
+
+
+**Automatic recovery of Lichess games**
+
+In the event of power loss or module reboot while on a Lichess game, the module will automatically start on Lichess mode and reconnect to continue the game where it was, no need to press any button. You still can force it to boot on another mode by pressing the buttons if you want to.
 
 
 ### Using Elfacun with Picochess
