@@ -3,6 +3,8 @@
 ![Elfacun](./images/pic6.jpg)
 
 
+__News (2024/05/26): Elfacun software version R14 released with bug fixes:__ Link: ----- __[R14 files](https://github.com/inmbolmie/elfacun/releases/tag/R14)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
+
 __News (2024/01/19): Elfacun software version R12 released with improvements for Lichess mode:__ Link: ----- __[R12 files](https://github.com/inmbolmie/elfacun/releases/tag/R12)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
 
 __News (2023/09/16): Elfacun software version R11 released with new Chessnut-compatible mode:__ Link: ----- __[R11 files](https://github.com/inmbolmie/elfacun/releases/tag/R11)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
