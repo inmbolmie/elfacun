@@ -107,5 +107,5 @@ Be warned that if you want to use later a 6V original module with "power from th
 Brocoli has been tested to work with most 5V original modules. Currently the only untested modules that can suppose a problem are RISC and RISC 2.0. Do not use brocoli with 6V modules unless you modifiy the module to remove the diode that drops the input voltage.
 
 
-_"DGT", "Millennium", "Mephisto" and "Chessnut" are trademarks of their respective owners.
+_"DGT", "Millennium", "Mephisto", "Chessnut" and "IChessOne" are trademarks of their respective owners.
 All the trademarks are used nominatively to indicate compatibility, and do not indicate affiliation to or endorsement by the trademark owners._

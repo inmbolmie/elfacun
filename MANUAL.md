@@ -31,9 +31,12 @@
 23. [Adjust sound tones](#adjust-sound-tones)
 24. [On-screen led indications](#on-screen-led-indications)
 25. [Chessnut mode](#chessnut-mode)
-26. [Dual leds mode](#dual-leds-mode)
-27. [Adjust screen brightness](#adjust-screen-brightness)
-28. [Enable or disable power from board](#enable-or-disable-power-from-board)
+26. [Scally homage screen](#scally-homage-screen)
+27. [Chess 960 mode](#chess-960-mode)
+28. [Dual leds mode](#dual-leds-mode)
+29. [Adjust screen brightness](#adjust-screen-brightness)
+30. [Enable or disable power from board](#enable-or-disable-power-from-board)
+
 
 ### Powering the module
 
@@ -268,12 +271,14 @@ You can launch a challenge from LichessTV pressing twice one of the six module b
 
 Only "rapid" and "classic" games are supported on the Lichess board interface. The "blitz", "bullet" or "correspondence" games cannot be played on Elfacun and won't be shown on the module, even if you start a game on another interface. Also only the "standard" chess games are supported.
 
-For example, to configure the first button to lauch a rated 10+0 game as rando color you will configure in _settings.txt_:
+For example, to configure the first button to lauch a rated 10+0 game as random colour you will configure in _settings.txt_:
 
     lichess.mode.X.time=10
     lichess.mode.X.increment=0
     lichess.mode.X.color=random
     lichess.mode.X.rated=true
+
+__Note that after September 2024, non-random coloured challenges are no longer supported by Lichess, so if you configure a non-random coloured challenge it will be launched as a random-coloured one.__
 
 If you pressed one button but don't want to launch the challenge, simply press a different button to cancel.
 
@@ -281,7 +286,7 @@ After the challenge is launched, if is successfully paired the game will be auto
 
 While in a game, you can control with the module buttons some actions:
 
-* __Fourth button__: Ask the opponent for __taking back__ the las movement.
+* __Fourth button__: Ask the opponent for __taking back__ the last movement.
 * __Fifth button__: Offer draw to the opponent.
 * __Sixth button__: __Resign__.
 
@@ -299,7 +304,7 @@ The opponent draw and takeback offers will be shown on the screen as well. You c
 
 When a game ends, the module will show the result and LichessTV mode will automatically start again. You have to reach the final position for that to happen or press any module button after the game result has been shown.
 
-_While experimenting with Lichess settings, I recommend you have at hand a connected app or the session initiated on the web site, as if you launch challenges repeatedly and don't play the games, you could be temporarily banned. Also if you want to accept or offer a rematch you won't have time to set-up the board and make the first movement before the game is cancelled, so in that case you have to make the first move on the other interface and then you can set-up the board with that position that will be indicated on the screen.
+While experimenting with Lichess settings, I recommend you have at hand a connected app or the session initiated on the web site, as if you launch challenges repeatedly and don't play the games, you could be temporarily banned. Also if you want to accept or offer a rematch you won't have time to set-up the board and make the first movement before the game is cancelled, so in that case you have to make the first move on the other interface and then you can set-up the board with that position that will be indicated on the screen.
 
 On Lichess mode there is no "piece recognition" as such. The pieces simply have to be in the same positions that the screen shows, that is the position on Lichess servers.
 
@@ -313,6 +318,14 @@ On Lichess mode your movements are not instantly reflected on the screen because
 
 Note that sometimes if you make a valid move, even if the rest of the position is bad on the board, the move will be accepted and made on Lichess. Afterwards the true position on Lichess will be reflected on the screen, as the screen has to show what is on Lichess servers. So it is important while on Lichess mode to be careful moving your pieces and the opponent pieces as you are playing against humans and all the moves you make are definitive.
 
+
+**Promotion and underpromotion**
+
+About promotion in Lichess by default when you put the pawn in the eight rank the module will assume that you want to promote it to a queen. If you want to underprote it to a different piece, you have to scan with the module the piece you want to promote to before placing the piece on the last rank. __It is important to remember that you have to scan the piece BEFORE placing it on the last rank, and do not place the pawn__, just place the piece instead of the pawn. Once placed, if you haven't scanned the piece beforehand, the module will assume that you want to promote a queen and will be too late to change your mind as the movement will be already sent.
+
+To scan the destination piece, you actually can use a piece of the other colour. So for example, to promote to a white knight you can scan a white knight as well as a black knight if you want to.
+
+
 **On-screen Wifi signal quality indicator**
 
 It is vital for the module to operate properly to have proper Wifi signal strength. This is a particular device in the sense that the Wifi antenna is located very inconveniently, as it lies flat inside the module that is inserted in the board under a very thick chessboard PCB that blocks part of the signal coming from and going to the Wifi access point. So in general you can expect a much lower range for the module than you can get on other devices like your mobile phone and so.
@@ -320,7 +333,7 @@ It is vital for the module to operate properly to have proper Wifi signal streng
 
 ![wifi quality](./images/wifi.jpg)
 
-So to have good feedback about the signal quality the module is experiencing I have added an on-screen signal quality indicator when on Lichess mode. It is a colored dot next to the lower part of the board picture:
+So to have good feedback about the signal quality the module is experiencing I have added an on-screen signal quality indicator when on Lichess mode. It is a coloured dot next to the lower part of the board picture:
 
 - Green dot indicates good signal
 - Orange dot indicates weak signal
@@ -577,10 +590,53 @@ While on "Mode C" you won't be able to connect to the module using the Chesslink
 Then once started you should be able to connect using BLE from any Chessnut-compatible app.
 
 
+### Scally homage Screen
+
+
+Alan 'Scally' Cooper was a key contributor of this project. His help was crucial to get the V2 universal compatibility, the Diablillo interface and a lot of the firmware improvements over the time. He sadly passed away in 2024, and as a homage to him I have included a brief homage screen to appear on every module startup starting on release R14. To enable this screen you have to add this to your settings.txt configuration and load it on the module with the SD card:
+
+    scally.homage=true
+
+![alt text](./images/scally.jpg)
+
+
+### Chess 960 mode
+
+With software release R15 or higher you can enable the Chess 960 mode and play Chess 960/Fischer Random starting positions with any compatible app.
+
+To enable this mode you have to keep pushed the third leftmost button for 1-2 seconds. The screen will indicate "960" when this mode is activated. If you want to play with the black pieces on front, you have to keep the button pushed for longer, like 4-5 seconds to enter the "board inverted 960 mode".
+
+![alt text](./images/960_1.png)
+
+To configure the starting position, once in 960 mode you have to place first all the pawns, white and black on the second and seventh ranks, like this:
+
+![alt text](./images/960_2.png)
+
+Now you can place all the pieces, but you have to do it __exactly in the following order__:
+
+1. King
+2. Queen
+3. Both rooks
+4. Both bishops
+5. Both knights
+
+You can place first the white pieces or first the black pieces, the orden in colour doesn't matter.
+
+![alt text](./images/960_3.png)
+
+Once placed, if you got it wrong or you want to change the position, you have to remove the pieces and start again from the "only pawns" position and follow again the indicated order.
+
+There are several online sites where you can generate Chess 960/Fischer Random positions like this one: https://wlabe.com/chess960
+
+You can return to the "regular chess" mode by keeping pushed again the third leftmost button for 1-2 seconds.
+
+
 ## V2 only features
 
 
 ### Dual leds mode
+
+_To use dual leds, you need at least one V2 module. Dual leds will work with V1+V2 or V2+V2, but not with two V1 modules._
 
 When you use two Elfacun modules compatible with this feature in the same board, the passive module will recognize the active one on startup and it will send to it LED updates via BLE during the game. That way both chess apps willbe able to indicate their moves on the board leds.
 
@@ -625,6 +681,10 @@ You can override the stored setting using a new parameter on the SD card's `sett
 On V2 modules you can enable power from board installing a jumper clearly marked on the user-accesible side of the PCB.
 
 On V1 modules follow the instructions [here](./BROCOLI.md#using-brocoli-with-v1-modules)
+
+
+
+
 
 
 _"DGT", "Millennium", "Mephisto" and "Chessnut" are trademarks of their respective owners.

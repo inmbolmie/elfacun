@@ -11,7 +11,7 @@ The module as initially available will be provided with the following elements:
 * Elfacun chess module PCB pre-programmed and ready to use.
 * 3D-printed case.
 * USB to Mini-USB angled cable.
-* 50 RFID tags for the chess pieces.
+* 75 RFID tags for the chess pieces, enough to equip two piece sets.
 * SD card for software update and user configuration.
 
 ![Elfacun](./images/pic1.jpg)
@@ -36,6 +36,7 @@ __V2 and V1 features:__
 * Compatible with most DGT-compatible apps.
 * Compatible with most ChessLink-compatible apps.
 * Compatible with most Chessnut-compatible apps (starting on R11 firmware)
+* Supports Chess 960/Fischer Random starting positions (starting on R15 firmware)
 * USB Connectivity to chess apps.
 * Bluetooth Connectivity to chess apps.
 * Bluetooth Low Energy (BLE) connectivity to chess apps.
@@ -61,5 +62,5 @@ Video demonstrating the module functionality:
 ![Elfacun](./images/pic4.jpg)
 
 
-_"DGT", "Millennium", "Mephisto" and "Chessnut" are trademarks of their respective owners.
+_"DGT", "Millennium", "Mephisto", "Chessnut" and "IChessOne" are trademarks of their respective owners.
 All the trademarks are used nominatively to indicate compatibility, and do not indicate affiliation to or endorsement by the trademark owners._

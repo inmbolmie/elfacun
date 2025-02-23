@@ -149,7 +149,7 @@ The LED lights are not operational as they are shown with a big delay for unknow
 
 ### HIARCS (Windows)
 
-HIARCS on Windows does not provide a configuration option to indicate a serial port for the connected board, and fails to detect Elfacun for unknown reasons, so it cannot be used. That only applies to the Windows desktop version, the mobile version works fine via Bluetooth. MacOS version may or may not work as it has not been tested.
+HIARCS Chess Explorer on Windows (versión 1.4) and MacOS have been reported to work fine with the module.
 
 
 ### ARENA (Windows)
@@ -170,5 +170,5 @@ Some apps like Shredder Classic don't work at all interfacing Elfacun with Rabbi
 
 [https://goneill.co.nz/chess.php](https://goneill.co.nz/chess.php)
 
-_"DGT", "Millennium", "Mephisto" and "Chessnut" are trademarks of their respective owners.
+_"DGT", "Millennium", "Mephisto", "Chessnut" and "IChessOne" are trademarks of their respective owners.
 All the trademarks are used nominatively to indicate compatibility, and do not indicate affiliation to or endorsement by the trademark owners._

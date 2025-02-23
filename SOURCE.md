@@ -126,3 +126,7 @@ Before programming the board you will need to upload SPIFFS resources from the _
 ### Additional notes
 
 To power the module I recommend using a mini-USB angled connector to release some stress from the mini-usb connector. With a straight connector you risk ripping it accidentally from the board as it will protrude a lot. The connector has to be angled _up_ for the cable to go to the right and outside the module. A _down_ angled cable will go over the screen, and _left_ and _right_ angled cables will interfere with the on-off switch or the jack connector.
+
+
+_"DGT", "Millennium", "Mephisto", "Chessnut" and "IChessOne" are trademarks of their respective owners.
+All the trademarks are used nominatively to indicate compatibility, and do not indicate affiliation to or endorsement by the trademark owners._
