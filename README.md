@@ -5,9 +5,9 @@
 
 ## News
 
-__(2025/02/23): Elfacun software version R15 released with bug fixes:__ Link: ----- __[R15 files](https://github.com/inmbolmie/elfacun/releases/tag/R14)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
+__(2025/02/23): Elfacun software version R15 released with bug fixes:__ Link: ----- __[R15 files](https://github.com/inmbolmie/elfacun/releases/tag/R15)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
 
-__(2025/02/23): Diablillo software version R15 released with bug fixes:__ Link: ----- __[R15 files](https://github.com/inmbolmie/elfacun/releases/tag/R14)__ ----- Installation instructions: ----- __[Update Diabillo](./DIABLILLO.md#update-diablillo-software)__
+__(2025/02/23): Diablillo software version R15 released with bug fixes:__ Link: ----- __[R15 files](https://github.com/inmbolmie/elfacun/releases/tag/R15)__ ----- Installation instructions: ----- __[Update Diabillo](./DIABLILLO.md#update-diablillo-software)__
 
 
 ## Elfacun chess module
