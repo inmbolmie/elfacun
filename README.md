@@ -5,9 +5,7 @@
 
 ## News
 
-__(2025/02/23): Elfacun software version R15 released with bug fixes:__ Link: ----- __[R15 files](https://github.com/inmbolmie/elfacun/releases/tag/R15)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
-
-__(2025/02/23): Diablillo software version R15 released with bug fixes:__ Link: ----- __[R15 files](https://github.com/inmbolmie/elfacun/releases/tag/R15)__ ----- Installation instructions: ----- __[Update Diabillo](./DIABLILLO.md#update-diablillo-software)__
+__(2025/06/15): Source code and design files for V2 module released: ----- [Make your own module](./SOURCE.md)__
 
 
 ## Elfacun chess module
@@ -35,6 +33,10 @@ To assist in the release of the module, I provide here links to some basic docum
 ![Elfacun](./images/pic4.jpg)
 
 ## Old News
+
+__(2025/02/23): Elfacun software version R15 released with bug fixes:__ Link: ----- __[R15 files](https://github.com/inmbolmie/elfacun/releases/tag/R15)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
+
+__(2025/02/23): Diablillo software version R15 released with bug fixes:__ Link: ----- __[R15 files](https://github.com/inmbolmie/elfacun/releases/tag/R15)__ ----- Installation instructions: ----- __[Update Diabillo](./DIABLILLO.md#update-diablillo-software)__
 
 __(2024/05/26): Elfacun software version R14 released with bug fixes:__ Link: ----- __[R14 files](https://github.com/inmbolmie/elfacun/releases/tag/R14)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
 

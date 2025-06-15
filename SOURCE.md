@@ -6,7 +6,11 @@
 
 ### Introduction
 
-I include here all the resources needed to build a module. Building a module from scratch is not easy though. I will try to give some caveats for each step. You will need to:
+I include here all the resources needed to build a module.
+
+There are separated design files for V1 and V2 hardware. The firmare is the same for both versions though.
+
+Building a module from scratch is not easy. I will try to give some caveats for each step. You will need to:
 
 * Make a PCB with the provided fabrication files, or customize one from the Kicad design files
 * Get all the components and assemble the PCB
@@ -41,11 +45,12 @@ The boards can be ordered pre-assembled and most of the components are reference
 Those are the additional components that you need not included in the BOM file. I cannot advise or endorse a particular provider for the components
 
 * 2x MCP23S17 DIP (through hole)
+* 2x 74F189 DIP (through hole, only V2 module)
 * 1x AZDelivery ESP32 WROOM-32 (be aware that there are dozens of similar boards, I cannot advise about compatibility for those)
 * 1x ILI9341 2.2 inch screen module
 * 6x PB13 Square 12*12mm SPST momentary buttons
 * 1x 40-pin 90-degree angled card edge connector (EDAC 395-040-558-212)
-* 1x piezo buzzer
+* 1x electromagnetic buzzer
 * 1x RFID RC522 mini module
 * Approx. 1.5m of Wire-wrapping wire to make the RFID antenna
 * 1x PJ-359 audio jack connector
