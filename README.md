@@ -7,7 +7,6 @@
 
 __(2025/06/15): Source code and design files for V2 module released: ----- [Make your own module](./SOURCE.md)__
 
-
 ## Elfacun chess module
 
 This is an ongoing hardware project to create a chess module compatible with the old Mephisto modular boards (Exclusive, Modular, München) that will provide connectivity to a wide variety of chess apps and services.
