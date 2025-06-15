@@ -8,7 +8,9 @@
 
 I include here all the resources needed to build a module.
 
-There are separated design files for V1 and V2 hardware. The firmare is the same for both versions though.
+There are separated design files for V1 and V2 hardware. The firmware is the same for both versions though.
+
+The V2 module main improvement is on the board date capture circuit. The board position is now stored on two dedicated RAM chips, and this allows for universal compatibility with any original Mephisto module.
 
 Building a module from scratch is not easy. I will try to give some caveats for each step. You will need to:
 
@@ -27,9 +29,11 @@ Anyway if you are into making this you can write me for help to the address __in
 
 ### PCB design files
 
-Included in the directory _Kicad_ You will need Kicad 6 to open them. I include the schematics and pcb design. [Schematics PDF](./Kicad/Elfacun_schematic_v1.1.pdf)
+Included in the directory _Kicad_ You will need Kicad 6 to open them. I include the schematics and pcb design. [Schematics V1 PDF](./Kicad/v1.1/Elfacun_schematic_v1.1.pdf)  [Schematics V2 PDF](./Kicad/v2.1/Elfacun_schematic_v2.1.pdf)
 
 ![Schematics](./images/schematic_1.1.png)
+
+![Schematics](./images/schematic_2.1.png)
 
 
 ### PCB Fabrication files
