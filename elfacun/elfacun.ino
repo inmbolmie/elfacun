@@ -1993,11 +1993,7 @@ SKIP:;
   read_module_buttons();
     timeUpdateButtons = millis() +  buttons_update_interval;
   }
-
-
-  }
-
-
+  
 
   //We block here if there are pending external clock messages to the host
   if (isExternalClock) {
