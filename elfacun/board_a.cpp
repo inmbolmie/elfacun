@@ -1,10 +1,10 @@
-/*  
+/*
     ElFacun Chess Module software for ESP32
     © 2022 Inmbolmie inmbolmie [at] gmail [dot] com
     Distributed under the GNU GPL V3.0 license
-    
-    This program is distributed WITHOUT ANY WARRANTY, even the 
-    implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+
+    This program is distributed WITHOUT ANY WARRANTY, even the
+    implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
     PURPOSE.  See the GNU General Public License for more details.
 */
 
@@ -41,8 +41,13 @@ boolean pushedPlay = false;
 boolean pushedPlus = false;
 boolean pushedNext = false;
 byte lastbuttons = 0b11111111;
+byte pushButtonCount = 0;
+boolean adjustingBrightness = false;
+boolean disableSendButtons = false;
 
-
+boolean holdMode = false;
+boolean slowMode = false;
+boolean disableBLEmode = false;
 
 
 
@@ -79,7 +84,7 @@ void IRAM_ATTR onTimerLed() {
 
     for (int j = 0; j < 8; j++) {
       //If lit in any page it will be lit and rows cycled, due to hardware limitations
-      if (ledStatusBuffer[(64 * j) + i] == 4) {
+      if (ledStatusBufferX[i] > 0 || (ledStatusBuffer[(64 * j) + i] == 4) || (ledStatusBufferB[(64 * j) + i] == 4) ) {
         if (!boardInverted) {
           ledStatus[i] = 4;
         } else {
@@ -593,18 +598,46 @@ void process_clock_message () {
 void set_leds() {
 
   //Read rest of message
-  if (serialLog) Serial.println ("BOARD RECEIVED LED MESSAGE: ");
+  if (serialLog) Serial.print ("BOARD RECEIVED LED MESSAGE: ");
   byte size = readSerialBlock();
-  byte pattern = readSerialBlock();
-  byte startField = readSerialBlock();
-  byte endField = readSerialBlock();
-  readSerialBlock();
+  byte pattern;
+  byte startField;
+  byte endField;
 
-  if (startField == 0x40) {
+  if (size == 0x02) {
+
+    pattern = readSerialBlock();
+    readSerialBlock();
+
+    if (serialLog) Serial.print (size, DEC);
+    if (serialLog) Serial.print (" ");
+    if (serialLog) Serial.print (pattern, DEC);
+    if (serialLog) Serial.println ("");
+
+  } else {
+
+    pattern = readSerialBlock();
+    startField = readSerialBlock();
+    endField = readSerialBlock();
+    readSerialBlock();
+
+    if (serialLog) Serial.print (size, DEC);
+    if (serialLog) Serial.print (" ");
+    if (serialLog) Serial.print (pattern, DEC);
+    if (serialLog) Serial.print (" ");
+    if (serialLog) Serial.print (startField, DEC);
+    if (serialLog) Serial.print (" ");
+    if (serialLog) Serial.print (endField, DEC);
+    if (serialLog) Serial.println ("");
+
+  }
+
+  //size == 0x02 trick for compatibility with old versions of BearChess
+  if (size == 0x02 || startField == 0x40) {
     startField = 0;
     endField = 63;
 
-    for (int i = startField; i < endField; i++) {
+    for (int i = startField; i <= endField; i++) {
       for (int j = 0; j < 8; j++) {
         ledStatusBuffer[i + (64 * j)] = pattern * 4;
       }
@@ -735,48 +768,228 @@ void board_a_command_loop(byte rcv) {
 
 
 void read_module_buttons() {
-  byte  buttons = SPIExpanderButtons.readPort(0);
 
-  if (!isLichessConnected && (strcmp(revelationButtonOrder, "TRUE") == 0)) {
-    //First button is change lever
-    if (buttons & 0b00000001 && ! (lastbuttons & 0b00000001)) {
-      send_button_push(BUTTON_LEVER);
-    }
-    if (buttons & 0b00000010 && ! (lastbuttons & 0b00000010)) {
-      send_button_push(BUTTON_BACK);
-    }
-    if (buttons & 0b00000100 && ! (lastbuttons & 0b00000100)) {
-      send_button_push(BUTTON_MINUS);
-    }
-    if (buttons & 0b00001000 && ! (lastbuttons & 0b00001000)) {
-      send_button_push(BUTTON_PLAY);
-    }
-    if (buttons & 0b00010000 && ! (lastbuttons & 0b00010000)) {
-      send_button_push(BUTTON_PLUS);
-    }
-    if (buttons & 0b00100000 && ! (lastbuttons & 0b00100000)) {
-      send_button_push(BUTTON_NEXT);
-    }
+  //GET SPI BUS
+  boolean isSemaphoreTaken = true;
+  if (!xSemaphoreTake( xScreenSemaphore, ( TickType_t ) screenSemaphoreTimeout )) {
+    isSemaphoreTaken = false;
+    if (serialLog) Serial.println("XXXXXXXXXXXXXXX   ERROR TAKING SEMAPHORE AT read_module_buttons, skipping loop ");
+
   } else {
-    if (buttons & 0b00000001 && ! (lastbuttons & 0b00000001)) {
-      send_button_push(BUTTON_BACK);
+
+    byte  buttons = SPIExpanderButtons.readPort(0);
+
+    boolean stuck = false;
+    if ((buttons & 0b00111111) != 0b00111111) {
+      if (serialLog) Serial.print("Pushing buttons: ");
+      if (serialLog) Serial.println((buttons & 0b00111111), BIN);
+
+
+      //Try to detect stuck expanders
+      int count=0;
+      for (uint8_t i = 1; i > 0; i <<= 1) {
+        if (buttons & i) ++count;
+      }
+
+      if (count <=3 ) {
+        stuck = true;
+      }
     }
-    if (buttons & 0b00000010 && ! (lastbuttons & 0b00000010)) {
-      send_button_push(BUTTON_MINUS);
+
+    
+    if (stuck) {
+
+      if (serialLog) Serial.print("Bus expander selected: ");
+      if (serialLog) Serial.println(digitalRead(CONTROLLER_OUTPUT_CHIPSELECT) , DEC);
+
+      if (serialLog) Serial.print("Buttons expander selected: ");
+      if (serialLog) Serial.println(digitalRead(CONTROLLER_OUTPUT_CHIPSELECT_BUTTONS) , DEC);
+
+      
+      
+      if (serialLog) Serial.println("RESETTING SPI EXPANDERS------------------------------------------");
+      SPIExpanderButtons.begin();
+      delay(100);
+      SPIExpander.begin();
+      delay(100);
+      buttons = SPIExpanderButtons.readPort(0);
+
+      if (serialLog) {
+        buup();
+        delay(50);
+        buup();
+        delay(50);
+        buup();
+        delay(50);
+        buup();
+        delay(50);
+        buup();
+        delay(50);
+        buup();
+        delay(50);
+        buup();
+      }
+      
+      if (serialLog) Serial.print("Pushing buttons: ");
+      if (serialLog) Serial.println((buttons & 0b00111111), BIN);
+
     }
-    if (buttons & 0b00000100 && ! (lastbuttons & 0b00000100)) {
-      send_button_push(BUTTON_PLAY);
+
+    boolean sendButton = true;
+
+    //Check for brightness adjustment
+    if ((pushButtonCount >= 20 || (adjustingBrightness && pushButtonCount >= 2)) && ! (buttons & 0b00000001)) {
+      pushButtonCount = 0;
+      decreaseTftBrightness();
+      adjustingBrightness = true;
     }
-    if (buttons & 0b00001000 && ! (lastbuttons & 0b00001000)) {
-      send_button_push(BUTTON_PLUS);
+    if ((pushButtonCount >= 20 || (adjustingBrightness && pushButtonCount >= 2)) && ! (buttons & 0b00100000)) {
+      pushButtonCount = 0;
+      increaseTftBrightness();
+      adjustingBrightness = true;
     }
-    if (buttons & 0b00010000 && ! (lastbuttons & 0b00010000)) {
-      send_button_push(BUTTON_NEXT);
+
+    //Check for hold position mode deactivation
+    if (holdMode && ((!slowMode && pushButtonCount < 20) || (slowMode && pushButtonCount < 3)) && ((buttons & 0b00111111) != 0b00111111)) {
+      holdMode = false;
+      pushButtonCount = 0;
+      cancelLichessConfirmation();
+      deleteNVSBoardPosition();
+      disableSendButtons = false;
+      sendButton = false;
+
+      while ((buttons & 0b00111111) != 0b00111111) {
+        buttons = SPIExpanderButtons.readPort(0);
+      }
     }
-    if (buttons & 0b00100000 && ! (lastbuttons & 0b00100000)) {
-      send_button_push(BUTTON_LEVER);
+
+    //Check for hold position mode activation
+    if (!holdMode && ((!slowMode && pushButtonCount >= 20) || (slowMode && pushButtonCount >= 3)) && !isLichessConnected && !(buttons & 0b00000010)) {
+      if (!holdMode) {
+        announceHoldMode();
+        storeNVSBoardPosition();
+      }
+      holdMode = true;
+      disableSendButtons = true;
     }
+
+
+    //Check for 960 mode activation
+    if (!chess960ModeEnabled && !disableSendButtons && ((!slowMode && pushButtonCount >= 20) || (slowMode && pushButtonCount >= 3)) && !isLichessConnected && !(buttons & 0b00000100)) {
+      chess960ModeEnabled = true;
+      onChess960ModeIcon();
+      disableSendButtons = true;
+      boardInverted = false;
+    }
+
+
+    //Check for 960 black in front mode activation
+    if (chess960ModeEnabled && disableSendButtons && ((!slowMode && pushButtonCount >= 60) || (slowMode && pushButtonCount >= 9)) && !isLichessConnected && !(buttons & 0b00000100)) {
+      boardInverted = true;
+    }
+
+
+    //Check for 960 mode deactivation
+    if (chess960ModeEnabled && !disableSendButtons && ((!slowMode && pushButtonCount >= 20) || (slowMode && pushButtonCount >= 3)) && !isLichessConnected && !(buttons & 0b00000100)) {
+      chess960ModeEnabled = false;
+      offChess960ModeIcon();
+      disableSendButtons = true;
+      boardInverted = false;
+    }
+    
+
+    //Check for disable/enable BLE mode activation
+    if ( ((!slowMode && pushButtonCount >= 20) || (slowMode && pushButtonCount >= 3)) && !isLichessConnected && !(buttons & 0b00010000)) {
+
+
+      if ((!slowMode && pushButtonCount == 20) || (slowMode && pushButtonCount == 3)) {
+        if (!BLEdeviceConnected) {
+          if (!disableBLEmode) {
+            onBLEConnectedIconDisabled();
+            disableBLEmode = true;
+            stopAdvertisement();
+          } else {
+            startAdvertisement();
+            offBLEConnectedIcon();
+            disableBLEmode = false;
+          }
+        }
+      }
+
+      disableSendButtons = true;
+
+    }
+
+
+    if (sendButton && ! adjustingBrightness && ! disableSendButtons && !isLichessConnected && (strcmp(revelationButtonOrder, "TRUE") == 0)) {
+      //First button is change lever
+      if (buttons & 0b00000001 && ! (lastbuttons & 0b00000001)) {
+        send_button_push(BUTTON_LEVER);
+      }
+      if (buttons & 0b00000010 && ! (lastbuttons & 0b00000010)) {
+        send_button_push(BUTTON_BACK);
+      }
+      if (buttons & 0b00000100 && ! (lastbuttons & 0b00000100)) {
+        send_button_push(BUTTON_MINUS);
+      }
+      if (buttons & 0b00001000 && ! (lastbuttons & 0b00001000)) {
+        send_button_push(BUTTON_PLAY);
+      }
+      if (buttons & 0b00010000 && ! (lastbuttons & 0b00010000)) {
+        send_button_push(BUTTON_PLUS);
+      }
+      if (buttons & 0b00100000 && ! (lastbuttons & 0b00100000)) {
+        send_button_push(BUTTON_NEXT);
+      }
+    } else if (sendButton && ! adjustingBrightness && ! disableSendButtons) {
+      if (buttons & 0b00000001 && ! (lastbuttons & 0b00000001)) {
+        send_button_push(BUTTON_BACK);
+      }
+      if (buttons & 0b00000010 && ! (lastbuttons & 0b00000010)) {
+        send_button_push(BUTTON_MINUS);
+      }
+      if (buttons & 0b00000100 && ! (lastbuttons & 0b00000100)) {
+        send_button_push(BUTTON_PLAY);
+      }
+      if (buttons & 0b00001000 && ! (lastbuttons & 0b00001000)) {
+        send_button_push(BUTTON_PLUS);
+      }
+      if (buttons & 0b00010000 && ! (lastbuttons & 0b00010000)) {
+        send_button_push(BUTTON_NEXT);
+      }
+      if (buttons & 0b00100000 && ! (lastbuttons & 0b00100000)) {
+        send_button_push(BUTTON_LEVER);
+      }
+    }
+
+    if (! (buttons & 0b00000001) && ! (lastbuttons & 0b00000001)) {
+      pushButtonCount++;
+    } else if (! (buttons & 0b00100000) && ! (lastbuttons & 0b00100000)) {
+      pushButtonCount++;
+    } else if (! (buttons & 0b00000010) && ! (lastbuttons & 0b00000010)) {
+      pushButtonCount++;
+    } else if (! (buttons & 0b00000100) && ! (lastbuttons & 0b00000100)) {
+      pushButtonCount++;
+    } else if (! (buttons & 0b00010000) && ! (lastbuttons & 0b00010000)) {
+      pushButtonCount++;
+    } else {
+      pushButtonCount = 0;
+      if (adjustingBrightness) {
+        storeAdjustedBrightness();
+      }
+      adjustingBrightness = false;
+
+      disableSendButtons = false;
+
+    }
+
+
+    lastbuttons = buttons;
+
+
+    //RELEASE SPI BUS
+    xSemaphoreGive( ( xScreenSemaphore ) );
+
   }
 
-  lastbuttons = buttons;
 }

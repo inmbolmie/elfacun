@@ -25,6 +25,12 @@
 #define MB_W_WRITE    0x57
 #define MB_R_READ     0x52
 
+//Custom mode B board opcodes
+#define MB_ADV_WRITE   0x30
+#define MB_XLED_WRITE  0x31
+#define MB_UPDATE_INFO  0x33
+#define MB_UPDATE_READ  0x35
+
 //Mode B piece codes
 #define BEMPTY       0x2E
 #define BWPAWN       0x50
@@ -45,8 +51,21 @@ void sendStatusIfNeeded();
 void ackMB_V_VERSION();
 void ackMB_R_READ(byte rxValue1, byte rxValue2);
 void ackMB_L_LED();
+void ackMB_L_LED_Actually();
 void ackMB_X_OFFLED();
 void processLedBuffer() ;
 void ackMB_W_WRITE(byte rxValue1, byte rxValue2, byte rxValue3, byte rxValue4) ;
+void sendDataTypeBBoard(byte* data, int len);
+byte decodeDataModeB(byte a, byte b);
+boolean validateBMessage(std::string message);
+boolean validateBMessage(std::string message, boolean force);
+
+std::vector<byte>  getBytesTransmitModeB(byte command, std::vector<byte> data);
+
+extern boolean hasToAckLed;
+
+extern boolean disableStatusOnEveryScan;
+
+extern boolean parityCheckDisabled;
 
 #endif

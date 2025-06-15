@@ -1,14 +1,21 @@
-/*  
+/*
     ElFacun Chess Module software for ESP32
     © 2022 Inmbolmie inmbolmie [at] gmail [dot] com
     Distributed under the GNU GPL V3.0 license
-    
-    This program is distributed WITHOUT ANY WARRANTY, even the 
-    implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+
+    This program is distributed WITHOUT ANY WARRANTY, even the
+    implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
     PURPOSE.  See the GNU General Public License for more details.
 */
 
 #include "board_b.h"
+#include "ble_board_c.h"
+
+boolean hasToAckLed = false;
+
+boolean disableStatusOnEveryScan = false;
+
+boolean parityCheckDisabled = false;
 
 byte setOddParity(byte in) {
 
@@ -120,6 +127,69 @@ std::vector<byte>  getBytesTransmitModeB(byte command, std::vector<byte> data) {
 }
 
 
+boolean validateBMessage(std::string message) {
+  return validateBMessage(message, false);
+}
+
+
+boolean validateBMessage(std::string message, boolean force) {
+
+  if (parityCheckDisabled && !force) {
+    return true;
+  }
+
+  if (message.size() < 3) {
+
+    if (serialLog) {
+      if (serialLog)  Serial.print("BLOCK CRC ERROR ON INCOMING B DATA: MESSAGE TOO SHORT: ");
+      for (int i = 0; i < message.size()  ; i++) {
+        if (serialLog)  Serial.print(message[i], HEX);
+        if (serialLog)  Serial.print("-----------------------------");
+      }
+
+      if (serialLog) Serial.println("");
+    }
+    return false;
+  }
+
+  byte blockParity = 0;
+  for (int i = 0; i < message.size() - 2 ; i++) {
+    blockParity = blockParity ^ message[i] & 0x7F;
+  }
+
+  if ((message[message.size() - 2] & 0x7F) != firstHexDigit(blockParity) ||
+      (message[message.size() - 1] & 0x7F) != secondHexDigit(blockParity)) {
+
+    if (serialLog) {
+
+      if (serialLog)  Serial.print("BLOCK CRC ERROR ON INCOMING B DATA: ");
+      for (int i = 0; i < message.size()  ; i++) {
+        if (serialLog) Serial.print(message[i], HEX);
+        if (serialLog) Serial.print(" ");
+      }
+
+      if (serialLog) Serial.print(" RECEIVED CRC: ");
+      if (serialLog) Serial.print((message[message.size() - 2] & 0x7F), HEX);
+      if (serialLog) Serial.print(" ");
+      if (serialLog) Serial.print((message[message.size() - 1] & 0x7F), HEX);
+      if (serialLog) Serial.print(" ");
+
+      if (serialLog) Serial.print(" CORRECT CRC: ");
+      if (serialLog) Serial.print(firstHexDigit(blockParity), HEX);
+      if (serialLog) Serial.print(" ");
+      if (serialLog) Serial.print(secondHexDigit(blockParity), HEX);
+      if (serialLog) Serial.print(" ");
+
+      if (serialLog) Serial.println("-----------------------------");
+    }
+    return false;
+
+  }
+  return true;
+}
+
+
+
 
 
 std::vector<byte>  getBytesTransmitModeBNoEncode(byte command, std::vector<byte> data) {
@@ -173,6 +243,11 @@ void sendDataTypeBBoard(byte* data, int len) {
 void ackMB_V_VERSION() {
 
 
+  if (isDiablilloConnected) {
+    return;
+  }
+
+
 
   std::vector<byte> responseData{1, 0};
   std::vector<byte> txValue = getBytesTransmitModeB(MB_V_VERSION + 0x20, responseData);
@@ -190,17 +265,20 @@ void ackMB_V_VERSION() {
 
 
 void ackMB_R_READ(byte rxValue1, byte rxValue2) {
+
+
+
   std::vector<byte> responseData(2, 0);
   responseData[0] = decodeDataModeB(rxValue1, rxValue2);
 
   switch (responseData[0]) {
     case 0:
       //Serial port setup
-      responseData[1] = 0;
+      responseData[1] = parityCheckDisabled;
       break;
     case 1:
       //Board scan time
-      responseData[1] = 20;
+      responseData[1] = 30;
       break;
     case 2:
       //Automatic reports
@@ -208,14 +286,22 @@ void ackMB_R_READ(byte rxValue1, byte rxValue2) {
       break;
     case 3:
       //Automatic status report time
-      responseData[1] = updateIntervalTypeBUSBBoard / 4  ;
+      responseData[1] = updateIntervalTicksTypeBUSBBoard ;
       break;
     case 4:
       //LED brightness
       responseData[1] = 14;
       break;
+    case 6:
+      //No idea...
+      responseData[1] = 0xEA;
     default:
       break;
+  }
+
+
+  if (isDiablilloConnected) {
+    return;
   }
 
 
@@ -234,11 +320,23 @@ void ackMB_R_READ(byte rxValue1, byte rxValue2) {
 void ackMB_L_LED()
 {
 
+  if (isDiablilloConnected) {
+    return;
+  }
+
+  hasToAckLed = true;
+  ackMB_L_LED_Actually();
+}
+
+
+void ackMB_L_LED_Actually()
+{
+  hasToAckLed = false;
 
   std::vector<byte> responseData{};
   std::vector<byte> txValue = getBytesTransmitModeB(MB_L_LED + 0x20, responseData);
 
-  if ( xSemaphoreTake( xSendDataBLESemaphore, ( TickType_t ) portMAX_DELAY ) == pdTRUE )
+  if ( xSemaphoreTake( xSendDataBLESemaphore, ( TickType_t ) 0 ) == pdTRUE )
   {
     sendDataTypeBBoard(txValue.data(), txValue.size());
     xSemaphoreGive( xSendDataBLESemaphore );
@@ -255,14 +353,20 @@ void ackMB_X_OFFLED()
 {
 
 
+
   //clear led state boards
   for (int i = 0; i < 64 * 8; i++) {
-    ledStatusBuffer[i] = 0;
+    ledStatusBufferB[i] = 0;
   }
 
   if (updateModeTypeBUSBBoard == 0) {
     //Update every scan
     sendStatusIfNeeded();
+    return;
+  }
+
+
+  if (isDiablilloConnected) {
     return;
   }
 
@@ -282,78 +386,162 @@ void ackMB_X_OFFLED()
 void processLedBuffer() {
 
   ledUpdateReceived = true;
+
   //clear led state boards
   for (int i = 0; i < 64 * 8; i++) {
-    ledStatusBuffer[i] = 0;
+    ledStatusBufferB[i] = 0;
   }
 
-  //ledInterval = decodeDataModeB(ledbuffer[1], ledbuffer[2]);
 
-  //Store ledbuffer in the materialized led array, that is 8 consecutive led state boards that will be cycled
-  for (int numled = 0; numled < 81; numled++) {
+  for (int slot = 0; slot < 8; slot++) {
 
+    int numlit = 0;
+    std::vector<byte> col2500Mode(8, 0x00);
+    std::vector<byte> row2500Mode(8, 0x00);
+    boolean onlyFirstColLastRowLit = true;
+    int numledsFirstCol = 0;
+    int numledsLastCol = 0;
+    int numledsFirstRow = 0;
+    int numledsLastRow = 0;
+    boolean is2500CableRight = false;
+    boolean is2500CableLeft = false;
 
-    //Each led potentially affects up to 4 squares. If all the leds for a sqare are lit then we lit the led in the boad.
-    //Obviously we don't have as many leds as modern boards to reproduce all the possible patterns
+    //Preprocess for RISC 2500 mode
+    for (int numled = 0; numled < 81; numled++) {
 
-    byte ledPattern = decodeDataModeB(ledbuffer[3 + (2 * numled)], ledbuffer[3 + (2 * numled) + 1]);
-    byte numledTransposed;// = (numled % 9) * 9 + (numled / 9);
+      byte ledPattern = decodeDataModeB(ledbuffer.at(3 + (2 * numled)), ledbuffer.at(3 + (2 * numled) + 1));
+      byte numledTransposed = (numled % 9) * 9 + (numled / 9);
 
-    //check if reversed board
-    //if (!boardInverted) {
-    numledTransposed = (numled % 9) * 9 + (numled / 9);
-
-    //}
-    //else  {
-    //  numledTransposed = ((80-numled) % 9) * 9 + ((80-numled) / 9);
-    //}
-
-    //    if (serialLog && ledbuffer[3 + (2 * numled)] != 0xB0)  Serial.print(ledbuffer[3 + (2 * numled)], HEX);
-    //    if (serialLog && ledbuffer[3 + (2 * numled)] != 0xB0)  Serial.print(" ");
-    //    if (serialLog && ledbuffer[3 + (2 * numled) + 1] != 0xB0)  Serial.print(ledbuffer[3 + (2 * numled) + 1], HEX);
-    //    if (serialLog && ledbuffer[3 + (2 * numled) + 1] != 0xB0)  Serial.print(" ");
-    //    if (serialLog && ledbuffer[3 + (2 * numled) + 1] != 0xB0)  Serial.print(ledPattern, HEX);
-    //    if (serialLog && ledbuffer[3 + (2 * numled) + 1] != 0xB0)  Serial.print(" ");
-    //    if (serialLog && ledbuffer[3 + (2 * numled) + 1] != 0xB0)  Serial.print(numled, DEC);
-    //    if (serialLog && ledbuffer[3 + (2 * numled) + 1] != 0xB0)  Serial.print(" ");
-    //    if (serialLog && ledbuffer[3 + (2 * numled) + 1] != 0xB0)  Serial.print(numledTransposed, DEC);
-    //    if (serialLog && ledbuffer[3 + (2 * numled) + 1] != 0xB0)  Serial.print("   ");
-
-    //Extract state for each board
-    for (int slot = 0; slot < 8; slot++) {
       boolean lit = bitRead(ledPattern, slot);
 
       if (lit) {
+
+        if ((numled / 9) < 8 && (numled / 9) > 0 && (numled % 9) > 0 && (numled % 9) < 8) {
+          onlyFirstColLastRowLit = false;
+        }
+
+        if (numled / 9 == 0) {
+          numledsFirstCol++;
+        }
+        if (numled / 9 == 8) {
+          numledsLastCol++;
+        }
+        if (numled % 9 == 0) {
+          numledsFirstRow++;
+        }
+        if (numled % 9 == 8) {
+          numledsLastRow++;
+        }
+      }
+    }
+
+    if (numledsFirstCol >= 2 && numledsLastRow >= 2 && onlyFirstColLastRowLit) {
+      is2500CableLeft = true;
+      if (serialLog) Serial.println("RISC 2500 CABLE LEFT");
+    }
+
+    if (numledsLastCol >= 2 && numledsFirstRow >= 2 && onlyFirstColLastRowLit)  {
+      is2500CableRight = true;
+      if (serialLog) Serial.println("RISC 2500 CABLE RIGHT");
+    }
+
+    //Store ledbuffer in the materialized led array, that is 8 consecutive led state boards that will be cycled
+    for (int numled = 0; numled < 81; numled++) {
+
+      //Each led potentially affects up to 4 squares. If all the leds for a sqare are lit then we lit the led in the boad.
+      //Obviously we don't have as many leds as modern boards to reproduce all the possible patterns
+
+      byte ledPattern = decodeDataModeB(ledbuffer.at(3 + (2 * numled)), ledbuffer.at(3 + (2 * numled) + 1));
+      byte numledTransposed = (numled % 9) * 9 + (numled / 9);
+
+      //Extract state for each board
+
+      boolean lit = bitRead(ledPattern, slot);
+
+      if (lit) {
+        numlit++;
+        boolean firstColLit = false;
+        boolean lastRowLit = false;
+
+        if ((numled / 9 == 8 && is2500CableRight) || (numled / 9 == 0 && is2500CableLeft)) {
+          firstColLit = true;
+        }
+
+        if ((numled % 9 == 0 && is2500CableRight) || (numled % 9 == 8 && is2500CableLeft)) {
+          lastRowLit = true;
+        }
+
         //set affected squares
         //bottom right
         if ((numledTransposed < 72) && ((numledTransposed % 9) != 8)) {
-          ledStatusBuffer[(slot * 64) + numledTransposed - (numledTransposed / 9)] = ledStatusBuffer[(slot * 64) + numledTransposed - (numledTransposed / 9)] + 1;
+          ledStatusBufferB[(slot * 64) + numledTransposed - (numledTransposed / 9)] = ledStatusBufferB[(slot * 64) + numledTransposed - (numledTransposed / 9)] + 1;
         }
 
         //bottom left
         if ((numledTransposed < 72) && ((numledTransposed % 9) != 0)) {
-          ledStatusBuffer[(slot * 64) + numledTransposed - 1 - (numledTransposed / 9)] = ledStatusBuffer[(slot * 64) + numledTransposed - 1 - (numledTransposed / 9)] + 1;
+          ledStatusBufferB[(slot * 64) + numledTransposed - 1 - (numledTransposed / 9)] = ledStatusBufferB[(slot * 64) + numledTransposed - 1 - (numledTransposed / 9)] + 1;
         }
 
         //top right
         if ((numledTransposed > 8) && ((numledTransposed % 9) != 8)) {
-          ledStatusBuffer[(slot * 64) + numledTransposed - 9 - (numledTransposed / 9) + 1] = ledStatusBuffer[(slot * 64) + numledTransposed - 9 - (numledTransposed / 9) + 1]  + 1;
+          ledStatusBufferB[(slot * 64) + numledTransposed - 9 - (numledTransposed / 9) + 1] = ledStatusBufferB[(slot * 64) + numledTransposed - 9 - (numledTransposed / 9) + 1]  + 1;
         }
 
         //top left
         if ((numledTransposed > 8) && ((numledTransposed % 9) != 0)) {
-          ledStatusBuffer[(slot * 64) + numledTransposed - 10 - (numledTransposed / 9) + 1] = ledStatusBuffer[(slot * 64) + numledTransposed - 10 - (numledTransposed / 9) + 1] + 1;
+          ledStatusBufferB[(slot * 64) + numledTransposed - 10 - (numledTransposed / 9) + 1] = ledStatusBufferB[(slot * 64) + numledTransposed - 10 - (numledTransposed / 9) + 1] + 1;
+        }
+
+        //row top (RISC mode)
+        if (firstColLit && numled % 9 > 0) {
+          row2500Mode[numled % 9 - 1] = row2500Mode[numled % 9 - 1] + 1;
+        }
+
+        //row bottom (RISC mode)
+        if (firstColLit && numled % 9 < 8) {
+          row2500Mode[numled % 9] = row2500Mode[numled % 9] + 1;
+        }
+
+        //col left (RISC mode)
+        if (lastRowLit && numled / 9 > 0) {
+          col2500Mode[numled / 9 - 1] = col2500Mode[numled / 9 - 1] + 1;
+        }
+
+        //col right (RISC mode)
+        if (lastRowLit && numled / 9 < 8) {
+          col2500Mode[numled / 9] = col2500Mode[numled / 9] + 1;
         }
       }
     }
-  }
 
-  if (serialLog)  Serial.println(" ");
+    if ((numlit == 3 || numlit == 4) && onlyFirstColLastRowLit) {
+      //RISC 2500 mode
+      byte colLit2500 = 0x00;
+      byte rowLit2500 = 0x00;
+      int numColLit = 0;
+      int numRowLit = 0;
+      for (int i = 0; i < 8; i++) {
+        //check if only one col and row is lit and lit the corresponding square
+        if (col2500Mode[i] == 2 && (is2500CableLeft || !numColLit)) {
+          colLit2500 = i;
+          numColLit ++;
+        }
+        if (row2500Mode[i] == 2 && (is2500CableRight || !numRowLit)) {
+          rowLit2500 = i;
+          numRowLit ++;
+        }
+      }
+      if (numRowLit && numColLit) {
+        ledStatusBufferB[(slot * 64) + (rowLit2500 * 8) + colLit2500] = 4;
+      }
+    }
+  }
 }
 
 
 
 void ackMB_W_WRITE(byte rxValue1, byte rxValue2, byte rxValue3, byte rxValue4) {
+
 
   std::vector<byte> responseData(2, 0);
 
@@ -366,9 +554,13 @@ void ackMB_W_WRITE(byte rxValue1, byte rxValue2, byte rxValue3, byte rxValue4) {
   switch (responseData[0]) {
     case 0:
       //Serial port setup
+      parityCheckDisabled = responseData[1] & 0x01;
+      if (serialLog)  Serial.print("SETTING Serial port parity: ");
+      if (serialLog)  Serial.println(parityCheckDisabled, DEC);
       break;
     case 1:
       //Board scan time
+      if (serialLog)  Serial.println("SETTING Board scan time (NOT IMPLEMENTED) ");
       break;
     case 2:
       //Automatic reports
@@ -378,15 +570,24 @@ void ackMB_W_WRITE(byte rxValue1, byte rxValue2, byte rxValue3, byte rxValue4) {
       break;
     case 3:
       //Automatic status report time
+      updateIntervalTicksTypeBUSBBoard = responseData[1];
       updateIntervalTypeBUSBBoard = 4 * responseData[1];
-      if (serialLog)  Serial.print("SETTING updateIntervalTypeBUSBBoard: ");
-      if (serialLog)  Serial.println(updateIntervalTypeBUSBBoard, DEC);
+      if (serialLog)  Serial.print("SETTING updateIntervalTicksTypeBUSBBoard: ");
+      if (serialLog)  Serial.println(updateIntervalTicksTypeBUSBBoard, DEC);
       break;
     case 4:
       //LED brightness
+      if (serialLog)  Serial.println("SETTING LED brightness (NOT IMPLEMENTED) ");
       break;
     default:
+      if (serialLog)  Serial.println("SETTING Unknown variable (NOT IMPLEMENTED) ");
       break;
+  }
+
+
+
+  if (isDiablilloConnected) {
+    return;
   }
 
   std::vector<byte> txValue = getBytesTransmitModeB(MB_W_WRITE + 0x20, responseData);
@@ -404,17 +605,22 @@ void ackMB_W_WRITE(byte rxValue1, byte rxValue2, byte rxValue3, byte rxValue4) {
 
 void sendStatusIfNeeded() {
 
-  if ((BLEdeviceConnected || (isTypeBUSBBoard && !firstCharacterReceived))) {
+  if ((BLECdeviceConnected || BLEdeviceConnected || (isTypeBUSBBoard && !firstCharacterReceived)) && ! bleDeviceRequestedUpdateFile) {
+
+    if (BLECdeviceConnected) {
+      sendPositionBLEBoardC();
+      return;
+    }
 
     std::vector<byte> responseData(64, BEMPTY);
 
     for (int i = 0; i < 64; i++) {
 
-      int index = i;
+      int index = 63 - i;
 
-      //if (!boardInverted) {
-      index = 63 - i;
-      //}
+      //      if (boardInverted) {
+      //        index = 63 - i;
+      //      }
 
       switch (currentPos[index]) {
         case EMPTY:
@@ -494,8 +700,8 @@ void sendStatusIfNeeded() {
           //        delay(10);
           sendDataTypeBBoard(vec[i].data(), vec[i].size());
           //        delay(10);
-          if (serialLog)  Serial.print("BLE Sent Value MB_S_STATUS size: ");
-          if (serialLog)  Serial.println(vec[i].size());
+          //if (serialLog)  Serial.print("BLE Sent Value MB_S_STATUS size: ");
+          //if (serialLog)  Serial.println(vec[i].size());
 
         }
         xSemaphoreGive( xSendDataBLESemaphore );
@@ -506,8 +712,8 @@ void sendStatusIfNeeded() {
       if ( xSemaphoreTake( xSendDataBLESemaphore, ( TickType_t ) portMAX_DELAY ) == pdTRUE )
       {
         sendDataTypeBBoard(txValue.data(), txValue.size());
-        if (serialLog)  Serial.print("BLE Sent Value MB_S_STATUS size: ");
-        if (serialLog)  Serial.println(txValue.size());
+        //if (serialLog)  Serial.print("BLE Sent Value MB_S_STATUS size: ");
+        //if (serialLog)  Serial.println(txValue.size());
         xSemaphoreGive( xSendDataBLESemaphore );
       }
 

@@ -74,6 +74,12 @@ extern boolean pushedPlay;
 extern boolean pushedPlus;
 extern boolean pushedNext;
 extern byte lastbuttons;
+extern byte pushButtonCount;
+extern boolean slowMode;
+
+extern boolean holdMode;
+
+extern boolean disableBLEmode;
 
 //LED TIMER
 extern hw_timer_t * timerLed;

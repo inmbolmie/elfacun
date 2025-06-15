@@ -28,6 +28,21 @@ void display_message(String message);
 void clear_message();
 void displayBoard();
 void initialize_tft();
+void setTftBrightness(byte brightness);
+void setDefaultTftBrightness();
+void increaseTftBrightness();
+void decreaseTftBrightness();
+void storeAdjustedBrightness();
+
+extern byte currentTftBrightness;
+
+extern boolean centerBoardOnScreen;
+
+extern boolean isBrightnessAdjustmentDisabled;
+
+extern SemaphoreHandle_t xScreenSemaphore;
+
+extern const TickType_t screenSemaphoreTimeout;
 
 void paintLichessPlayerTop(const char* lichessTopTitle,const char*  lichessTopName,long  lichessTopRating);
 void paintLichessPlayerTopSprite(const char* lichessTopTitle,const char*  lichessTopName,long  lichessTopRating);
@@ -42,7 +57,7 @@ void paintLichessPlayerClear();
 void paintLichessTimeTop(long lichessTopTime, boolean isTimeToMove);
 void paintLichessTimeBottom(long lichessBottomTime, boolean isTimeToMove);
 
-void askForLichessConfirmation(const char* lichessTime, const char* lichessIncrement, const char* lichessRated, const char* lichessColor);
+void askForLichessConfirmation(const char* lichessTime, const char* lichessIncrement, const char* lichessRated, const char* lichessColor,  const char* lichessElo);
 void cancelLichessConfirmation();
 
 void cancelLichessSeekScreen();
@@ -62,5 +77,20 @@ void paintLichessGameWonTop();
 void displayLichessLogo();
 void displayModeALogo();
 void displayModeBLogo();
+void displayModeCLogo();
+
+void announceHoldMode();
+
+void onBLEConnectedIcon();
+void offBLEConnectedIcon();
+void onBLEConnectedIconDisabled();
+
+void onChess960ModeIcon();
+void offChess960ModeIcon();
+
+void clearScreen();
+void greyScreen();
+
+void announceLoadingResources();
 
 #endif

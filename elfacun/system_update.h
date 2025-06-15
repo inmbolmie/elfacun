@@ -18,5 +18,15 @@
 #include "crc32.h"
 
 void updateFromFS(fs::FS &fs);
+void checkRemoteUpdateFromFS(fs::FS &fs);
+void performRemoteUpdate();
+void load_file_from_sd_to_spiffs(String filename);
+
+extern uint32_t remoteUpdateFileSize;
+extern char* remoteUpdateFileCRC;
+extern boolean sendRemoteUpdateFileOverBLE;
+extern char* remoteUpdateFileName;
+
+
 
 #endif

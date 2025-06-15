@@ -12,9 +12,12 @@
 #define _UTIL_H_
 
 #include "Arduino.h"
+#include "nvs_conf.h"
+
 
 //Sound
-static boolean soundIsDisabled = false;
+extern boolean soundIsDisabled;
+extern boolean soundIsDisabledPassiveLed;
 
 
 inline byte decToBcd(byte val)
@@ -28,22 +31,10 @@ inline int bcdToDec(int value) {
 }
 
 
-inline void beep() {
-  if (!soundIsDisabled) {
-    ledcWriteTone(0, 1000);
-    delay(100);
-    ledcWriteTone(0, 0);
-  }
-}
 
-
-inline void boop() {
-  if (!soundIsDisabled) {
-    ledcWriteTone(0, 2000);
-    delay(100);
-    ledcWriteTone(0, 0);
-  }
-}
+void beep();
+void boop();
+void buup();
 
 
 inline void reset() {

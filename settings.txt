@@ -15,11 +15,16 @@
 
 #Default board mode
 #This is the mode the module will boot at by default
-#Valid values are: A, B, C
+#Valid values are: A, B, C, L
 #Default value is A
 #The serial port will operate at 9600 8N1 in mode A
 #The serial port will operate at 38400 bauds 7O1 in mode B
-#To boot the module in the non-default mode, keep pressed the left-most module button while booting
+#L is for Lichess mode
+#To boot the module in the non-default mode, keep pressed some module buttons while booting:
+#For mode A first button
+#For mode B second button
+#For mode C first + second buttons
+#For mode L third button
 #
 mode.default=A
 
@@ -230,5 +235,13 @@ screen.brightness.default = 64
 #
 #bluetooth.power=5
 
+
+#Scally homage
+#Valid values are true, false
+#Default value is false
+#If enabled it will show a short homage screen to Alan 'Scally' Cooper on the module startup
+#Alan was a key contributor to this project
+#
+#scally.homage=true
 
 
