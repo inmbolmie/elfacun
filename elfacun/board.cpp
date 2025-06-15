@@ -1,16 +1,14 @@
-/*  
+/*
     ElFacun Chess Module software for ESP32
     © 2022 Inmbolmie inmbolmie [at] gmail [dot] com
     Distributed under the GNU GPL V3.0 license
-    
-    This program is distributed WITHOUT ANY WARRANTY, even the 
-    implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+
+    This program is distributed WITHOUT ANY WARRANTY, even the
+    implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
     PURPOSE.  See the GNU General Public License for more details.
 */
 
 #include "board.h"
-
-
 
 Movement *lastMovement = NULL;
 
@@ -28,6 +26,19 @@ byte initpos[64] = {8, 9, 10, 12, 11, 10, 9, 8,
                     1, 1, 1, 1, 1, 1, 1, 1,
                     2, 3, 4, 6, 5, 4, 3, 2
                    };
+
+
+byte onlypawnspos[64] = {0, 0, 0, 0, 0, 0, 0, 0,
+                    7, 7, 7, 7, 7, 7, 7, 7,
+                    0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0,
+                    1, 1, 1, 1, 1, 1, 1, 1,
+                    0, 0, 0, 0, 0, 0, 0, 0
+                   };
+
+
 
 byte lastDrawn[64] = {255, 255, 255, 255, 255, 255, 255, 255,
                       255, 255, 255, 255, 255, 255, 255, 255,
@@ -70,6 +81,16 @@ boolean scannedpos[64] = { true, true, true, true, true, true, true, true,
                            true, true, true, true, true, true, true, true,
                          };
 
+boolean scannedposV2[64] = { true, true, true, true, true, true, true, true,
+                             true, true, true, true, true, true, true, true,
+                             false, false, false, false, false, false, false, false,
+                             false, false, false, false, false, false, false, false,
+                             false, false, false, false, false, false, false, false,
+                             false, false, false, false, false, false, false, false,
+                             true, true, true, true, true, true, true, true,
+                             true, true, true, true, true, true, true, true,
+                           };
+
 
 boolean transposescannedpos[64];
 
@@ -84,8 +105,10 @@ boolean passivescannedpos[64] = { true, true, true, true, true, true, true, true
                                   true, true, true, true, true, true, true, true,
                                 };
 
-
+int numScansV2 = 0;
 byte ledStatusBuffer[8 * 64];
+byte ledStatusBufferB[8 * 64];
+boolean ledStatusBufferX[64];
 byte ledStatus[64];
 byte ledInterval = 4000;
 boolean isModeALeds = false;
@@ -100,6 +123,7 @@ boolean ledsAreDisabled = false;
 
 byte liftedPiece = 0;
 byte liftedPieceSquare = 0;
+byte lastScannedPieceLichess = 0;
 byte liftedPiece2 = 0;
 byte liftedPiece2Square = 0;
 byte promotingSquare = 100;
@@ -112,6 +136,8 @@ byte currentPos[64] ;
 
 boolean boardInverted = false;
 
+boolean disableBoardScanning = false;
+
 
 //BLE objects
 
@@ -121,7 +147,8 @@ int sendStatusState = 0;
 boolean isTypeBUSBBoard = false;
 boolean firstCharacterReceived = true;
 SemaphoreHandle_t xSendDataBLESemaphore;
-long updateIntervalTypeBUSBBoard = 50; //50 ms default ?
+long updateIntervalTypeBUSBBoard = 60;
+long updateIntervalTicksTypeBUSBBoard = 15;
 long lastUpdateTimeTypeBUSBBoard = 0;
 int updateModeTypeBUSBBoard = 0;
 
@@ -132,8 +159,15 @@ byte currentLedCol = 0;
 byte currentLedPage = 0;
 byte lastLedPage = 0;
 
+//960 mode
+boolean chess960ModeEnabled = false;
+
+
 //general mode
 boolean isPassiveMode = false;
+
+//elfacun v2 hardware
+boolean isV2Hardware = false;
 
 //SPI Bus expander for bus data read & write
 MCP23S17 SPIExpander(&SPI, CONTROLLER_OUTPUT_CHIPSELECT, 0);
@@ -170,6 +204,28 @@ void displayLedRow() {
 
 
 
+
+  //No led paint if another module is in control unless remote LED service available
+  if (updateRemoteLedsAvailable()) {
+    byte leds[8];
+
+    for (int i = 1; i < 64 ; i++) {
+      int index = i;
+      if (boardInverted) {
+        index = 63 - i;
+      }
+      if (ledStatus[i]) {
+        bitSet(leds[index / 8],  index % 8);
+      } else {
+        bitClear(leds[index / 8],  index % 8);
+      }
+    }
+
+    //check if changed since last update
+
+    updateRemoteLeds(leds);
+  }
+
   if (isPassiveMode) {
     //No led paint if another module is in control
     return;
@@ -184,6 +240,7 @@ void displayLedRow() {
     if (currentLedPage != lastLedPage) {
 
       currentLedRow++;
+
       if (currentLedRow > 7) {
         currentLedRow = 0;
       }
@@ -300,6 +357,36 @@ void displayLedRow() {
 }
 
 
+void forceAllLedsOff() {
+
+  
+  SPIExpanderButtons.digitalWrite(COLUMN_DISABLE_EX, true); //disable column to bus
+
+  digitalWrite(CONTROLLER_OUTPUT_DISABLE, false); //enable PIC to bus
+
+  //Load  leds latch
+  SPIExpander.writePort(1, 0x00);
+  SPIExpanderButtons.digitalWrite(LED_WR_LOAD_EX, true); //unlatch leds
+  SPIExpanderButtons.digitalWrite(LED_WR_LOAD_EX, false); //latch leds
+
+  //Configure bus for writing to row latch
+
+
+  //Write row address to expander
+  byte encodedRow = 0xFF;
+  bitWrite(encodedRow, 0, 0);
+  SPIExpander.writePort(1, encodedRow);
+  SPIExpanderButtons.digitalWrite(ROW_LOAD_EX, true); //open row load latch
+  SPIExpanderButtons.digitalWrite(ROW_LOAD_EX, false); //latch row
+
+  //lit leds
+  SPIExpanderButtons.digitalWrite(LED_WR_DISABLE_COLUMN_LOAD_EX, false);
+
+  digitalWrite(CONTROLLER_OUTPUT_DISABLE, true); //disable PIC to bus
+  
+}
+
+
 //Put the board bus in default mode
 void busValuesToDefault() {
   digitalWrite(CONTROLLER_OUTPUT_DISABLE, true);
@@ -328,16 +415,16 @@ boolean checkForExternalModule() {
 
   delay(100);
 
-  int count=0;
+  int count = 0;
 
   boolean initialState1 = SPIExpanderButtons.digitalRead(LED_WR_DISABLE_COLUMN_LOAD_EX);
   boolean initialState2 = SPIExpanderButtons.digitalRead(LED_WR_LOAD_EX);
   boolean initialState3 = SPIExpanderButtons.digitalRead(ROW_LOAD_EX);
   boolean initialState4 = SPIExpanderButtons.digitalRead(COLUMN_DISABLE_EX);
-  
+
   unsigned long time = millis();
 
-  while (millis() < time + 2000 ) {
+  while ((count < 10) && millis() < (time + 2000 + (isV2Hardware * count * 500) )) {
 
     boolean currentState1 = SPIExpanderButtons.digitalRead(LED_WR_DISABLE_COLUMN_LOAD_EX);
     boolean currentState2 = SPIExpanderButtons.digitalRead(LED_WR_LOAD_EX);
@@ -345,19 +432,19 @@ boolean checkForExternalModule() {
     boolean currentState4 = SPIExpanderButtons.digitalRead(COLUMN_DISABLE_EX);
 
     if ((initialState1 != currentState1) || (initialState2 != currentState2) || (initialState3 != currentState3) || (initialState4 != currentState4)) {
-      
+
       count++;
       initialState1 = currentState1;
       initialState2 = currentState2;
       initialState3 = currentState3;
       initialState4 = currentState4;
-    } 
+    }
   }
 
   if (serialLog) Serial.print("Transitions detected in bus: ");
-  if (serialLog) Serial.println(count,DEC);
+  if (serialLog) Serial.println(count, DEC);
 
-  if (count > 10) {
+  if (count >= 10) {
     return true;
   }
 
@@ -378,6 +465,62 @@ void shitchOffLed(byte i) {
 void clearAllBoardLeds() {
   for (int i = 0; i < 64 * 8; i++) {
     ledStatusBuffer[i] = 0;
+    ledStatusBufferB[i] = 0;
+    ledStatusBufferX[i] = 0;
+  }
+
+}
+
+
+
+void registerMovement(byte originPiece, byte originSquare, byte destinationPiece, byte destinationSquare, byte takenPiece, byte takenPieceSquare ) {
+  registerMovement(originPiece, originSquare, destinationPiece, destinationSquare, takenPiece, takenPieceSquare, true);
+}
+
+
+void registerMovement(byte originPiece, byte originSquare, byte destinationPiece, byte destinationSquare, byte takenPiece, byte takenPieceSquare, boolean sendMovement ) {
+
+
+  Movement *movement = new Movement;
+  movement->originPiece = originPiece;
+  movement->originSquare = originSquare;
+  movement->destinationPiece = destinationPiece;
+  movement->destinationSquare = destinationSquare;
+  movement->takenPiece = takenPiece;
+  movement->takenPieceSquare = takenPieceSquare;
+  movement->previousMovement = lastMovement;
+  if (lastMovement != NULL) {
+    lastMovement->nextMovement = movement;
+  }
+  lastMovement = movement;
+  movement->nextMovement = NULL;
+
+
+
+
+  if (serialLog) Serial.print("Register: ");
+  if (serialLog) Serial.print(originPiece, DEC);
+  if (serialLog) Serial.print(" ");
+  if (serialLog) Serial.print(char(originSquare % 8 + 0x41));
+  if (serialLog) Serial.print(8 - (originSquare / 8));
+  if (serialLog) Serial.print(" ");
+  if (serialLog) Serial.print(destinationPiece, DEC);
+  if (serialLog) Serial.print(" ");
+  if (serialLog) Serial.print(char(destinationSquare % 8 + 0x41));
+  if (serialLog) Serial.print(8 - (destinationSquare / 8));
+  if (serialLog) Serial.print(" ");
+  if (serialLog) Serial.print(takenPiece, DEC);
+  if (serialLog) Serial.print(" ");
+  if (serialLog) Serial.print(char(takenPieceSquare % 8 + 0x41));
+  if (serialLog) Serial.println(8 - (takenPieceSquare / 8));
+
+
+  //If in lichess mode send the movement if we are in our turn
+  if (isLichessGameActive() && isLichessGameRunning() && isMyTurnLichess() && sendMovement ) {
+    if (serialLog) Serial.println("Sending movement...");
+    while (! sendOutgoingMovementLichess(originSquare, destinationSquare)) {
+      if (serialLog) Serial.println("Retry sending movement...");
+    }
   }
 
 }

@@ -1,10 +1,10 @@
-/*  
+/*
     ElFacun Chess Module software for ESP32
     © 2022 Inmbolmie inmbolmie [at] gmail [dot] com
     Distributed under the GNU GPL V3.0 license
-    
-    This program is distributed WITHOUT ANY WARRANTY, even the 
-    implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+
+    This program is distributed WITHOUT ANY WARRANTY, even the
+    implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
     PURPOSE.  See the GNU General Public License for more details.
 */
 
@@ -98,11 +98,20 @@ boolean MODE0 = true;
 boolean MODE1 = false;
 int modeIndex = 0;
 
+boolean lichessFullyInitialized = false;
 
+
+int lowestRssiInterval = 0;
+unsigned long lastRssiChange = 0l;
+unsigned long rssiChangeInterval = 5000l;
+extern byte measuredRssi = 0;
 
 
 long lastTimeCommandConnectionUse = 0;
 long lastTimeStreamConnectionUse = 0;
+
+unsigned long timeReconnectWifi = 0;
+unsigned long wifi_reconnect_interval = 10000l;
 
 WiFiClientSecure wifiClient;
 WiFiClientSecure wifiClientStream;
@@ -132,22 +141,74 @@ long lichessWhiteRating = NULL;
 long lichessBlackRating = NULL;
 char lichessColorToMove = 'w';
 
-const TickType_t lichessSemaphoreTimeout = 5000 / portTICK_PERIOD_MS;
+const TickType_t lichessSemaphoreTimeout = 10000 / portTICK_PERIOD_MS;
 
 SemaphoreHandle_t xCommandConnectionSemaphore;
 SemaphoreHandle_t xLichessClockSemaphore;
 hw_timer_t * timerLichessClock = NULL;
 
-char* getStatusLineFromClient() {
+boolean lichessGameRunning = false;
+
+boolean endGameWhenAllMatches = false;
+
+boolean markEndGameWhenAllMatches = false;
+
+const unsigned long myReadBytesUntilTimeout = 3000l;
+
+const int wifiClientTimeout = 3;
+
+boolean closeWifiClientStream = false;
+
+
+boolean setClientTimeout(WiFiClientSecure* client) {
+  client->setTimeout(wifiClientTimeout);
+}
+
+
+
+size_t myReadBytesUntil(WiFiClientSecure* client, char terminator, boolean doubleTerminator, char *buffer, size_t length) {
+
+  unsigned long timeout = millis() + myReadBytesUntilTimeout;
+  boolean found = false;
+  size_t read = 0;
+  while (!found && (read < length) && (millis() < timeout ) ) {
+
+    while ((client->available() > 0) && !found) {
+
+      buffer[read++] = client->read();
+      if ((buffer[read - 1] == terminator) && (!doubleTerminator || ((read > 1) && (buffer[read - 3] == terminator) ))) {
+        found = true;
+        if (read < length) {
+          if (doubleTerminator) {
+            buffer[read - 2] = 0x00;
+          } else {
+            buffer[read] = 0x00;
+          }
+
+        }
+      }
+    }
+
+    if (!found) {
+      vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+  }
+
+  if (!found) {
+    buffer[0] = 0x00;
+    return 0;
+  }
+  return read;
+}
+
+
+char* getStatusLineFromClient(WiFiClientSecure* client) {
 
   char* emptyLine = new char[100];
   memset(emptyLine, 0, 100);
 
   char* sizeLine = new char[100];
   memset(sizeLine, 0, 100);
-
-  char* line = new char[1000];
-  memset(line, 0, 1000);
 
 
   if (serialLog) Serial.print("MEM available: ");
@@ -157,30 +218,40 @@ char* getStatusLineFromClient() {
   if (serialLog) Serial.println(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT), DEC);
 
 
-  if (!wifiClientStream.available()) {
+  if (!client->available()) {
     if (serialLog) Serial.print("Line not available");
-    delete emptyLine;
     delete sizeLine;
-    return line;
+    return emptyLine;
   }
 
+
   if (serialLog) Serial.print("Line available: ");
-  if (serialLog) Serial.println(wifiClientStream.available(), DEC);
+  if (serialLog) Serial.println(client->available(), DEC);
 
   sizeLine[0] = 0;
-  wifiClientStream.readBytesUntil('\n', sizeLine, 100);
+  myReadBytesUntil(client, '\n', false,  sizeLine, 100);
   //if (serialLog) Serial.println("Size line: ");
   //if (serialLog) Serial.println(sizeLine);
 
+  //Compute line size
+
+  int sizeInt = strtol(sizeLine, NULL, 16) + 100;
+
+  if (sizeInt == 0) {
+    sizeInt = 3000;
+  }
+
+  //if (serialLog) Serial.println("sizeInt: ");
+  //if (serialLog) Serial.println(sizeInt, DEC);
+
+  char* line = new char[sizeInt];
+  memset(line, 0, sizeInt);
+
   line[0] = 0;
-  wifiClientStream.readBytesUntil('\n', line, 1000);
+  myReadBytesUntil(client, '\n', true, line, sizeInt);
   //if (serialLog) Serial.println("Line: ");
   //if (serialLog) Serial.println(line);
 
-  emptyLine[0] = 0;
-  wifiClientStream.readBytesUntil('\n', emptyLine, 100);
-  //if (serialLog) Serial.println("Empty line line: ");
-  //if (serialLog) Serial.println(emptyLine);
 
   delete emptyLine;
   delete sizeLine;
@@ -192,13 +263,14 @@ char* getStatusLineFromClient() {
 
 
 
+
 char* getLineFromClient(WiFiClientSecure* client) {
 
-  char* line = new char[1000];
-  memset(line, 0, 1000);
+  char* line = new char[2000];
+  memset(line, 0, 2000);
 
   line[0] = 0;
-  client->readBytesUntil('\n', line, 1000);
+  myReadBytesUntil(client, '}' , false, line, 2000);
   //if (serialLog) Serial.println("Line: ");
   //if (serialLog) Serial.println(line);
 
@@ -208,47 +280,85 @@ char* getLineFromClient(WiFiClientSecure* client) {
 }
 
 
+
+
 int processHTTP(WiFiClientSecure* client) {
   // Check HTTP status
-  char status[320] = {0};
+  char status[1000] = {0};
 
   int returnCode = 200;
 
-  int timeout = millis() + 2000;
-  while (client->available() == 0) {
-    if (timeout - millis() < 0) {
-      if (serialLog) Serial.println("Client Timeout processHTTP");
+  unsigned long timeout = millis() + 4000l;
+
+
+  if (serialLog) Serial.print("Timeout:");
+  if (serialLog) Serial.println(timeout, DEC);
+
+  boolean statusReceived = false;
+
+  boolean endOfHeadersReceived = false;
+
+  char endOfHeaders[] = "\r\n\r\n";
+  char statusok[] = "200 OK";
+  char statusbad[] = "400 Bad";
+
+  int statusCharsReceived = 0;
+
+
+  while (!endOfHeadersReceived) {
+
+    unsigned long now = millis();
+
+    if (now > timeout) {
+      if (serialLog) Serial.println("Client Timeout processHTTP--------------------------------");
       client->stop();
       return 500;
     }
-  }
 
-  client->readBytesUntil('\r', status, sizeof(status));
-  // It should be "HTTP/1.0 200 OK"
-  if (strcmp(status + 9, "200 OK") != 0) {
-    returnCode = 500;
-    if (serialLog) Serial.print("Unexpected response: ");
-    if (serialLog) Serial.println(status);
-    if (strcmp(status + 9, "400 Bad Request") == 0) {
-      if (serialLog) Serial.println("Bad Request!");
-      returnCode = 400;
-    } else {
-      client->stop();
-      returnCode = 500;
+    if ((now % 1000) == 0) {
+      if (serialLog) Serial.println(millis(), DEC);
     }
 
+    if (client->available()) {
+
+      status[statusCharsReceived] = client->read();
+
+      if (!statusReceived) {
+        if (status[statusCharsReceived] == '\r') {
+
+          // It should be "HTTP/1.0 200 OK"
+          if (memcmp(&status[9], statusok, 6) != 0) {
+            endOfHeadersReceived = true;
+            returnCode = 500;
+            if (serialLog) Serial.print("Unexpected response: ");
+            if (serialLog) Serial.println(status);
+            if (memcmp(&status[9],  statusbad,  7) == 0) {
+              if (serialLog) Serial.println("Bad Request!");
+              returnCode = 400;
+            } else {
+              client->stop();
+              returnCode = 500;
+            }
+          }
+          statusReceived = true;
+          if (serialLog) Serial.println("Status received");
+        }
+      } else {
+        // Skip HTTP headers
+        if (memcmp(&status[statusCharsReceived - 3], endOfHeaders , 4) == 0) {
+          endOfHeadersReceived = true;
+        }
+      }
+      statusCharsReceived++;
+    } else {
+      delay(50);
+    }
   }
-
-  // Skip HTTP headers
-  char endOfHeaders[] = "\r\n\r\n";
-  if (!client->find(endOfHeaders)) {
-    if (serialLog) Serial.println("Invalid response");
-    returnCode = 500;
-  }
-
-
   return returnCode;
 }
+
+
+
 
 
 
@@ -262,7 +372,7 @@ void IRAM_ATTR onTimerLichess() {
     if ( xSemaphoreTake( xLichessClockSemaphore, ( TickType_t ) 0 ) == pdTRUE )
     {
 
-      if (isLichessGameActive() || lichessStreamTvActive) {
+      if ((isLichessGameActive() && !endGameWhenAllMatches && ! markEndGameWhenAllMatches) || lichessStreamTvActive) {
 
         if ((myTurn && !boardInverted) || (!myTurn && boardInverted)) {
           lichessWhiteTime = lichessWhiteTime - 50L;
@@ -289,7 +399,11 @@ void IRAM_ATTR onTimerLichess() {
 
 
 
+
+
 void initializeWifi() {
+
+  setCpuFrequencyMhz(160);
 
   //Semaphore to handle the commands persistent connection
   xCommandConnectionSemaphore = xSemaphoreCreateMutex();
@@ -322,13 +436,20 @@ void initializeWifi() {
 
   tft.setCursor(0, 0);
 
-  tft.print("Connecting to WIFI...");
+
+
+  tft.print("Connecting to WIFI......");
   delay(500);
+  WiFi.disconnect();
   WiFi.begin(ssid, password);
   delay(1000);
 
+  //WiFi.setTxPower(WIFI_POWER_17dBm);
+
+  setTftBrightness(32);
+
   int numtries = 20;
-  
+
   while (WiFi.status() != WL_CONNECTED && numtries-- > 0 ) {
     delay(500);
     if (serialLog) Serial.println(".");
@@ -352,97 +473,129 @@ void initializeWifi() {
   }
 
   tft.println("");
-  tft.println("WiFi connected");
+  tft.println("WiFi connected.");
   tft.print("IP address: ");
   tft.println(WiFi.localIP());
 
   if (serialLog) Serial.println("");
-  if (serialLog) Serial.println("WiFi connected");
+  if (serialLog) Serial.println("WiFi connected.");
   if (serialLog) Serial.print("IP address: ");
   if (serialLog) Serial.println(WiFi.localIP());
 
 
-  tft.println("\nStarting connection to server......");
+  tft.println("\nStarting connection to Lichess server......");
   // if you get a connection, report back via serial:
 
   wifiClient.setInsecure();
-  wifiClient.setTimeout(10);
+  wifiClient.setTimeout(wifiClientTimeout);
 
   wifiClientStream.setInsecure();
-  wifiClientStream.setTimeout(10);
+  wifiClientStream.setTimeout(wifiClientTimeout);
 
-  if (wifiClient.connect(server, 443)) {
-    tft.println("connected to server in setup");
-    // SETUP API: MAKE A REQUEST TO DOWNLOAD THE CURRENT USER'S LICHESS USERNAME
-    wifiClient.println("GET /api/account HTTP/1.1");
-    wifiClient.println("Host: lichess.org");
-    // Include an authorisation header with the lichess API token
-    wifiClient.print("Authorization: Bearer ");
-    wifiClient.println(token);
-    wifiClient.println();
-    //delay(1000); //delay to allow a response
+  while (!wifiClient.connect(server, 443)) {
+    wifiClient.stop();
+    tft.println("Error, reconnecting to server......");
+  }
 
-    //tft.print("process HTTP headers... ");
-    processHTTP(&wifiClient);
-    //delay(1000);
-    //tft.print("processed HTTP headers... ");
-    // Allocate the JSON document
-    // Use arduinojson.org/v6/assistant to compute the capacity.
+  wifiClient.setTimeout(wifiClientTimeout);
 
 
-    int timeout = millis() + 2000;
-    while (wifiClient.available() == 0) {
-      if (timeout - millis() < 0) {
-        if (serialLog) Serial.println("Client Timeout initializeWifi");
-        wifiClient.stop();
-        xSemaphoreGive( xCommandConnectionSemaphore );
-        return;
-      }
-    }
+  tft.println("Connected to server.");
+  // SETUP API: MAKE A REQUEST TO DOWNLOAD THE CURRENT USER'S LICHESS USERNAME
+  wifiClient.println("GET /api/account HTTP/1.1");
+  wifiClient.println("Host: lichess.org");
+  // Include an authorisation header with the lichess API token
+  wifiClient.print("Authorization: Bearer ");
+  wifiClient.println(token);
+  wifiClient.println();
+  //delay(1000); //delay to allow a response
 
-    //DynamicJsonDocument doc(1024);
-    // Parse JSON object
-    DeserializationError error = deserializeJson(doc, wifiClient);
-    if (error) {
-      // this is due to an error in the HTTP request
-      tft.print(F("deserializeJson() failed: "));
-      tft.println(error.f_str());
-      tft.print("HTTP failed... ");
-      tft.print("On Setup ");
-      delay(1000);
-      xSemaphoreGive( ( xCommandConnectionSemaphore ) );
+  //tft.print("process HTTP headers... ");
+  processHTTP(&wifiClient);
+  //delay(1000);
+  //tft.print("processed HTTP headers... ");
+  // Allocate the JSON document
+  // Use arduinojson.org/v6/assistant to compute the capacity.
+
+
+  unsigned long timeout = millis() + 2000l;
+  while (wifiClient.available() == 0) {
+    if (millis() > timeout) {
+      if (serialLog) Serial.println("Client Timeout initializeWifi");
+      wifiClient.stop();
+      xSemaphoreGive( xCommandConnectionSemaphore );
       return;
     }
-    // Extract values
-    //tft.println(F("Response:"));
-    // lichess username
-    delete username;
-    username = strdup(doc["username"]);
-    //tft.println(username);
-    //close request
-    //client.println("Connection: close");
-    //client.println();
-    if (username != NULL) {
+    delay(50);
+  }
 
-      tft.println("Connected to Lichess!");
-      tft.print("User: ");
-      tft.println(username);
-    }
-    //we were unable to connect to the server
-  } else {
-
-    if (serialLog) Serial.println("Server failed... ");
-    tft.println("Server connection failed... ");
+  //DynamicJsonDocument doc(1024);
+  // Parse JSON object
+  DeserializationError error = deserializeJson(doc, wifiClient);
+  if (error) {
+    // this is due to an error in the HTTP request
+    tft.print(F("deserializeJson() failed: "));
+    tft.println(error.f_str());
+    tft.print("HTTP failed... ");
+    tft.print("On Setup ");
     delay(1000);
     xSemaphoreGive( ( xCommandConnectionSemaphore ) );
     return;
-
   }
+  // Extract values
+  //tft.println(F("Response:"));
+  // lichess username
+  delete username;
+  username = strdup(doc["username"]);
+  //tft.println(username);
+  //close request
+  //client.println("Connection: close");
+  //client.println();
+  if (username != NULL) {
+
+    tft.println("Connected to Lichess!");
+    tft.print("User: ");
+    tft.println(username);
+  }
+  //we were unable to connect to the server
+
+
+  //
+  //  else {
+  //
+  //    if (serialLog) Serial.println("Server failed... ");
+  //    tft.println("Server connection failed... ");
+  //    delay(1000);
+  //    xSemaphoreGive( ( xCommandConnectionSemaphore ) );
+  //    return;
+  //
+  //  }
+
+  if (serialLog) Serial.println("WIFI TX power: ");
+  if (serialLog) Serial.println(WiFi.getTxPower(), DEC);
 
   xSemaphoreGive( ( xCommandConnectionSemaphore ) );
 
-  initRefreshLichessConnectionsTask();
+  initLichessLoopTask();
 
+}
+
+
+
+void wifiCheckReconnect() {
+
+  unsigned long now = millis();
+  if (now > timeReconnectWifi) {
+    if (WiFi.status() != WL_CONNECTED) {
+
+      if (serialLog) Serial.println("Reconnecting wifi...");
+
+      WiFi.disconnect();
+      WiFi.begin(ssid, password);
+
+      timeReconnectWifi = millis() + wifi_reconnect_interval;
+    }
+  }
 }
 
 
@@ -450,6 +603,8 @@ void initializeWifi() {
 
 
 void processFenIntoLichessPosition(const char* fen) {
+
+  lichessFullyInitialized = true;
 
   if (fen != NULL and strlen(fen) >= 15) {
 
@@ -531,14 +686,15 @@ void refreshCommandConnection() {
     return;
   }
 
-  if (wifiClient.connected() || wifiClient.connect(server, 443)) {
+  if (wifiClient.connected() || (wifiClient.connect(server, 443) && setClientTimeout(&wifiClient)) ) {
 
     if (serialLog) Serial.println("Refreshing connection refreshCommandConnection chat ");
 
     //keep the request so lichess knows you are there
-    wifiClient.print("GET /api/board/game/");
-    wifiClient.print(currentGameID);
-    wifiClient.println("/chat HTTP/1.1");
+    //wifiClient.print("GET /api/board/game/");
+    //wifiClient.print(currentGameID);
+    //wifiClient.println("/chat HTTP/1.1");
+    wifiClient.println("GET /api/challenge HTTP/1.1");
     wifiClient.println("Host: lichess.org");
     wifiClient.print("Authorization: Bearer ");
     wifiClient.println(token);
@@ -551,14 +707,16 @@ void refreshCommandConnection() {
       return;
     }
 
-    int timeout = millis() + 2000;
+    unsigned long timeout = millis() + 2000l;
     while (wifiClient.available() == 0) {
-      if (timeout - millis() < 0) {
+      unsigned  long now = millis();
+      if (millis() > timeout) {
         if (serialLog) Serial.println("Client Timeout refreshCommandConnection");
         wifiClient.stop();
         xSemaphoreGive( xCommandConnectionSemaphore );
         return;
       }
+      delay(50);
     }
 
     //DynamicJsonDocument doc(1024);
@@ -593,7 +751,7 @@ void sendLichessResign() {
     return;
   }
 
-  if (wifiClient.connected() || wifiClient.connect(server, 443)) {
+  if (wifiClient.connected() || (wifiClient.connect(server, 443) && setClientTimeout(&wifiClient))) {
 
     if (serialLog) Serial.println("Refreshing connection sendLichessResign chat ");
 
@@ -613,14 +771,15 @@ void sendLichessResign() {
       return;
     }
 
-    int timeout = millis() + 2000;
+    unsigned long timeout = millis() + 2000l;
     while (wifiClient.available() == 0) {
-      if (timeout - millis() < 0) {
+      if (millis() > timeout) {
         if (serialLog) Serial.println("Client Timeout sendLichessResign");
         wifiClient.stop();
         xSemaphoreGive( xCommandConnectionSemaphore );
         return;
       }
+      delay(50);
     }
 
     //DynamicJsonDocument doc(1024);
@@ -657,7 +816,7 @@ void sendLichessDrawOffer(boolean acceptOffer) {
     return;
   }
 
-  if (wifiClient.connected() || wifiClient.connect(server, 443)) {
+  if (wifiClient.connected() || (wifiClient.connect(server, 443) && setClientTimeout(&wifiClient))) {
 
     //keep the request so lichess knows you are there
     wifiClient.print("POST /api/board/game/");
@@ -681,14 +840,15 @@ void sendLichessDrawOffer(boolean acceptOffer) {
       return;
     }
 
-    int timeout = millis() + 2000;
+    unsigned long timeout = millis() + 2000l;
     while (wifiClient.available() == 0) {
-      if (timeout - millis() < 0) {
+      if (millis() > timeout) {
         if (serialLog) Serial.println("Client Timeout sendLichessDrawOffer");
         wifiClient.stop();
         xSemaphoreGive( xCommandConnectionSemaphore );
         return;
       }
+      delay(50);
     }
 
     //DynamicJsonDocument doc(1024);
@@ -723,7 +883,7 @@ void sendLichessTakeBack(boolean acceptOffer) {
     return;
   }
 
-  if (wifiClient.connected() || wifiClient.connect(server, 443)) {
+  if (wifiClient.connected() || (wifiClient.connect(server, 443) && setClientTimeout(&wifiClient))) {
 
     //keep the request so lichess knows you are there
     wifiClient.print("POST /api/board/game/");
@@ -747,14 +907,15 @@ void sendLichessTakeBack(boolean acceptOffer) {
       return;
     }
 
-    int timeout = millis() + 2000;
+    unsigned long timeout = millis() + 2000l;
     while (wifiClient.available() == 0) {
-      if (timeout - millis() < 0) {
+      if (millis() > timeout) {
         if (serialLog) Serial.println("Client Timeout sendLichessTakeBack");
         wifiClient.stop();
         xSemaphoreGive( xCommandConnectionSemaphore );
         return;
       }
+      delay(50);
     }
 
     //DynamicJsonDocument doc(1024);
@@ -781,6 +942,8 @@ void sendLichessTakeBack(boolean acceptOffer) {
 
 
 
+
+
 void refreshStreamConnection() {
 
   long current = millis();
@@ -799,6 +962,11 @@ void refreshStreamConnection() {
 
 
 
+
+//
+//RUNNING GAME INFO
+//
+
 boolean getRunningGameLichess() {
 
   xSemaphoreTake( xCommandConnectionSemaphore, ( TickType_t ) lichessSemaphoreTimeout );
@@ -816,13 +984,17 @@ boolean getRunningGameLichess() {
       //initializeWifi();
 
       xSemaphoreGive( xCommandConnectionSemaphore );
+
+      wifiCheckReconnect();
       return false;
     }
+
+    setClientTimeout(&wifiClient);
 
   }
 
 
-  if (wifiClient.connected() || wifiClient.connect(server, 443)) {
+  if (wifiClient.connected() || (wifiClient.connect(server, 443) && setClientTimeout(&wifiClient))) {
 
     if (serialLog) Serial.println("Getting game info getRunningGameLichess");
 
@@ -842,14 +1014,15 @@ boolean getRunningGameLichess() {
 
     lastTimeCommandConnectionUse = millis();
 
-    int timeout = millis() + 2000;
+    unsigned long timeout = millis() + 2000;
     while (wifiClient.available() == 0) {
-      if (timeout - millis() < 0) {
+      if (millis() > timeout) {
         if (serialLog) Serial.println("Client Timeout getRunningGameLichess");
         wifiClient.stop();
         xSemaphoreGive( xCommandConnectionSemaphore );
         return false;
       }
+      delay(50);
     }
 
     //DynamicJsonDocument doc(1024);
@@ -873,15 +1046,24 @@ boolean getRunningGameLichess() {
       //No ongoing games
 
       if (currentGameID != NULL) {
-        //Make sure we clear pending draw offers and resign orders
-        resetLichessGameActions();
+        if (serialLog) Serial.println("Game finished but we ignore that");
+        xSemaphoreGive( xCommandConnectionSemaphore );
+        return true;
+        //        //Make sure we clear pending draw offers and resign orders
+        //        resetLichessGameActions();
+        //        //Clean running game state
+        //        setLichessGameFinished();
+        //        lichessGameRunning = false;
+        //        disableBoardScanning = true;
       }
 
       delete currentGameID;
       currentGameID = NULL;
+      endGameWhenAllMatches = false;
+      markEndGameWhenAllMatches = false;
       if (serialLog) Serial.println("No games found");
       xSemaphoreGive( xCommandConnectionSemaphore );
-
+      if (serialLog) Serial.println("END Getting game info getRunningGameLichess");
       return true;
     }
 
@@ -902,7 +1084,10 @@ boolean getRunningGameLichess() {
           currentGameJson = doc["nowPlaying"][i];
           delete currentGameID;
           currentGameID = strdup(currentGameJson["gameId"]);
-
+          delete currentFen;
+          currentFen = strdup("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+          endGameWhenAllMatches = false;
+          markEndGameWhenAllMatches = false;
           break;
         }
       }
@@ -912,22 +1097,31 @@ boolean getRunningGameLichess() {
     if (currentGameID != NULL && !foundGame) {
       delete currentGameID;
       currentGameID = NULL;
+      endGameWhenAllMatches = true;
       if (serialLog) Serial.println("Game not found ?");
+      //Make sure we clear pending draw offers and resign orders
       resetLichessGameActions();
+      //Clean running game state
+      setLichessGameFinished();
+      if (serialLog) Serial.println("Finish game by not found game and current game not null");
+      lichessGameRunning = false;
+      disableBoardScanning = true;
       xSemaphoreGive( xCommandConnectionSemaphore );
+      if (serialLog) Serial.println("END Getting game info getRunningGameLichess");
       return true;
     }
 
     if (currentGameID == NULL) {
-      
+
       //Still no game, select first standard non-correspondence game from the list
       int gameIndex = -1;
       for (int i = 0; i < doc["nowPlaying"].size(); i++) {
         JsonObject gameJson = doc["nowPlaying"][i];
-        if ( strcmp(gameJson["speed"], "correspondence")!= 0  && strcmp(gameJson["variant"]["key"], "standard") == 0 ) {
+        if ( strcmp(gameJson["speed"], "correspondence") != 0  && (strcmp(gameJson["variant"]["key"], "standard") == 0 || strcmp(gameJson["variant"]["key"], "fromPosition") == 0  )) {
           gameIndex = i;
           if (serialLog) Serial.print("Current Game index is: ");
           if (serialLog) Serial.println(i, DEC);
+          //boardInverted = false;
           break;
         }
       }
@@ -936,6 +1130,9 @@ boolean getRunningGameLichess() {
         xSemaphoreGive( xCommandConnectionSemaphore );
         delete currentGameID;
         currentGameID = NULL;
+        endGameWhenAllMatches = false;
+        markEndGameWhenAllMatches = false;
+        if (serialLog) Serial.println("END Getting game info getRunningGameLichess");
         return true;
       }
 
@@ -944,7 +1141,16 @@ boolean getRunningGameLichess() {
       currentGameJson = doc["nowPlaying"][0];
       delete currentGameID;
       currentGameID = strdup(currentGameJson["gameId"]);
+      delete currentFen;
+      currentFen = strdup("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+      endGameWhenAllMatches = false;
+      markEndGameWhenAllMatches = false;
+      //Make sure we clear pending draw offers and resign orders
       resetLichessGameActions();
+      //Clean running game state
+      setLichessGameInProgress();
+      wifiClientStreamInitializedStatus = false;
+      wifiClientStream.stop();
 
     }
 
@@ -985,6 +1191,8 @@ boolean getRunningGameLichess() {
 
       }
     }
+
+    if (serialLog) Serial.println("END Getting game info getRunningGameLichess");
     xSemaphoreGive( xCommandConnectionSemaphore );
     return true;
   } else {
@@ -1000,6 +1208,145 @@ boolean getRunningGameLichess() {
 
 
 
+
+
+
+
+//
+//LAST FEN
+//
+
+boolean getLastFenOfRunningGame() {
+
+  xSemaphoreTake( xCommandConnectionSemaphore, ( TickType_t ) lichessSemaphoreTimeout );
+
+  if (!wifiClient.connected()) {
+    if (serialLog) Serial.println("Connecting wifiClient getLastFenOfRunningGame...");
+    wifiClient.stop();
+    if (!wifiClient.connect(server, 443) ) {
+      if (serialLog) Serial.println("Error connecting wifiClient getLastFenOfRunningGame...");
+      //wifiClientStream.stop();
+
+      //restart wifi
+      //if (serialLog) Serial.println("RESTARTING WIFI getLastFenOfRunningGame...");
+      //WiFi.disconnect();
+      //initializeWifi();
+
+      xSemaphoreGive( xCommandConnectionSemaphore );
+
+      wifiCheckReconnect();
+      return false;
+    }
+
+    setClientTimeout(&wifiClient);
+
+  }
+
+
+  if (wifiClient.connected() || (wifiClient.connect(server, 443) && setClientTimeout(&wifiClient))) {
+
+    if (serialLog) Serial.println("Getting game info getLastFenOfRunningGame");
+
+    //keep the request so lichess knows you are there
+    wifiClient.print("GET /api/games/user/");
+    wifiClient.print(username);
+    wifiClient.println("?lastFen=true&finished=true&max=5 HTTP/1.1");
+    wifiClient.println("Host: lichess.org");
+    wifiClient.println("Accept: application/x-ndjson");
+    wifiClient.print("Authorization: Bearer ");
+    wifiClient.println(token);
+    wifiClient.println();
+
+    if (processHTTP(&wifiClient) != 200) {
+      if (serialLog) Serial.println("processHTTP FALLO getLastFenOfRunningGame");
+      wifiClient.stop();
+      xSemaphoreGive( xCommandConnectionSemaphore );
+      return false;
+    }
+
+    if (serialLog) Serial.println("Success getLastFenOfRunningGame");
+
+    delay(500);
+
+    while (wifiClient.available()) {
+
+      char* line = getStatusLineFromClient(&wifiClient);
+
+      //if (serialLog) Serial.println("Returned status line: ");
+      //if (serialLog) Serial.println(line);
+
+      if (strlen(line) > 4) {
+
+        char* token = strtok(line, "\r\n");
+        int numMoves = 0;
+        while ( token != NULL ) {
+
+          if (token != NULL ) {
+
+
+            if (serialLog) Serial.println("Linea recibida getLastFenOfRunningGame: ");
+            if (serialLog) Serial.println(token);
+
+
+            DeserializationError error = deserializeJson(doc, token);
+            if (error) {
+              if (serialLog) Serial.println("deserializeJson error getLastFenOfRunningGame ");
+              // this is due to an error in the HTTP request
+              if (serialLog) Serial.print(F("deserializeJson() failed: "));
+              if (serialLog) Serial.println(error.f_str());
+              delete line;
+              xSemaphoreGive( xCommandConnectionSemaphore );
+              return false;
+            }
+
+
+            const char* gameId = doc["id"];
+
+            if (serialLog) Serial.print("Game id: ");
+            if (serialLog) Serial.println(gameId);
+
+            if (currentGameID != NULL && (strcmp(currentGameID, gameId) == 0)) {
+
+              if (serialLog) Serial.println("1");
+
+              delete currentFen;
+
+              if (serialLog) Serial.println("2");
+
+              currentFen = strdup(doc["lastFen"]);
+
+              if (serialLog) Serial.println("Last fen: ");
+              if (serialLog) Serial.println(currentFen);
+            }
+
+            if (serialLog) Serial.println("3");
+
+          }
+          token = strtok(NULL, "\r\n");
+        }
+
+      }
+      delete line;
+    }
+  }
+
+  xSemaphoreGive( xCommandConnectionSemaphore );
+  return true;
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 //Need to put in IRAM as it is used by ISR
 boolean IRAM_ATTR isLichessGameActive() {
   if (currentGameID != NULL) {
@@ -1009,6 +1356,22 @@ boolean IRAM_ATTR isLichessGameActive() {
   return false;
 
 }
+
+
+
+boolean IRAM_ATTR isLichessGameRunning() {
+  return lichessGameRunning;
+
+}
+
+
+
+
+
+
+//
+//LICHESS TV STREAM
+//
 
 
 void getLichessTvEvents() {
@@ -1032,9 +1395,12 @@ void getLichessTvEvents() {
       //if (serialLog) Serial.println("RESTARTING WIFI getLichessTvEvents...");
       //WiFi.disconnect();
       //initializeWifi();
+      wifiCheckReconnect();
       xSemaphoreGive( xCommandConnectionSemaphore );
       return;
     }
+
+    setClientTimeout(&wifiClientStream);
 
   }
 
@@ -1058,25 +1424,21 @@ void getLichessTvEvents() {
     }
   }
 
-  //if (serialLog) Serial.println("LI1b");
-
   //if (serialLog) Serial.println("GET DATA getLichessTvEvents");
 
   wifiClientStreamInitializedStatus = true;
 
   if (wifiClientStream.connected() && wifiClientStream.available()) {
 
-    char* line = getStatusLineFromClient();
-
-    //if (serialLog) Serial.println("LI1c");
+    char* line = getStatusLineFromClient(&wifiClientStream);
 
     //if (serialLog) Serial.println("Returned status line: ");
     //if (serialLog) Serial.println(line);
 
     if (strlen(line) > 4) {
 
-      //if (serialLog) Serial.println("Linea recibida: ");
-      //if (serialLog) Serial.println(line);
+      if (serialLog) Serial.println("Linea recibida: ");
+      if (serialLog) Serial.println(line);
 
 
       DeserializationError error = deserializeJson(doc, line);
@@ -1092,8 +1454,8 @@ void getLichessTvEvents() {
 
       const char* type = doc["t"];
 
-      //if (serialLog) Serial.print("Event Type: ");
-      //if (serialLog) Serial.println(type);
+      if (serialLog) Serial.print("Event Type: ");
+      if (serialLog) Serial.println(type);
 
       const char* fen = NULL;
       const char* lastmove = NULL;
@@ -1161,8 +1523,6 @@ void getLichessTvEvents() {
           lichessBlackRating = doc["d"]["players"][0]["rating"];
 
         }
-
-        //if (serialLog) Serial.println("LI1d");
 
         paintLichessPlayerClear();
 
@@ -1236,8 +1596,8 @@ void getLichessTvEvents() {
       processFenIntoLichessPosition(fen);
 
     }
+
     delete line;
-    //if (serialLog) Serial.println("LI1e");
   }
 
   refreshStreamConnection();
@@ -1249,6 +1609,15 @@ void getLichessTvEvents() {
 
 
 
+
+
+
+
+
+
+//
+//GAME STREAM
+//
 
 
 void getIncomingGameEventsLichess() {
@@ -1264,8 +1633,13 @@ void getIncomingGameEventsLichess() {
       if (serialLog) Serial.println("Error connecting getIncomingGameEventsLichess...");
       wifiClientStream.stop();
       xSemaphoreGive( xCommandConnectionSemaphore );
+      wifiCheckReconnect();
       return;
     }
+
+    setClientTimeout(&wifiClientStream);
+
+    if (serialLog) Serial.println("Connected getIncomingGameEventsLichess...");
   }
 
   if (!wifiClientStreamInitializedStatus ) {
@@ -1290,274 +1664,460 @@ void getIncomingGameEventsLichess() {
 
   if (wifiClientStream.connected() && wifiClientStream.available()) {
 
-    char* line = getStatusLineFromClient();
+    char* line = getStatusLineFromClient(&wifiClientStream);
 
     //if (serialLog) Serial.println("Returned status line: ");
     //if (serialLog) Serial.println(line);
 
     if (strlen(line) > 4) {
 
-      //We only get the clock time from this event
+      int numLines = 0;
 
-      if (serialLog) Serial.println("Linea recibida /api/board/game/stream/: ");
-      if (serialLog) Serial.println(line);
+      char* token = strtok(line, "\r\n");
+      int numMoves = 0;
+      while ( token != NULL ) {
 
-      //DynamicJsonDocument doc(1024);
-      DeserializationError error = deserializeJson(doc, line);
-      if (error) {
-        if (serialLog) Serial.println("deserializeJson error getIncomingGameEventsLichess ");
-        if (serialLog) Serial.print(F("deserializeJson() failed: "));
-        if (serialLog) Serial.println(error.f_str());
-        xSemaphoreGive( xCommandConnectionSemaphore );
-        delete line;
-        return;
-      }
+        if (token != NULL ) {
 
-      const char* type = doc["type"];
+          numLines++;
+          if (serialLog) Serial.println("Linea recibida /api/board/game/stream/: ");
+          if (serialLog) Serial.println(numLines, DEC);
+          if (serialLog) Serial.println(token);
 
-      if (serialLog) Serial.print("Event getIncomingGameEventsLichess Type: ");
-      if (serialLog) Serial.println(type);
-
-      const char* fen = NULL;
-      const char* moves = NULL;
-      char* lastmove = NULL;
-      const char* orientation = NULL;
-
-
-      if (0 == strcmp(type , "gameFull")) {
-
-        if (serialLog) Serial.println("Processing gameFull ");
-
-        moves = doc["state"]["moves"];
-
-        char* moves2 = strdup(moves);
-        char* token = strtok(moves2, " ");
-        while ( token != NULL ) {
-          if (token != NULL ) {
-            delete lastmove;
-            lastmove = strdup(token);
+          //DynamicJsonDocument doc(1024);
+          DeserializationError error = deserializeJson(doc, token);
+          if (error) {
+            if (serialLog) Serial.println("deserializeJson error getIncomingGameEventsLichess ");
+            if (serialLog) Serial.print(F("deserializeJson() failed: "));
+            if (serialLog) Serial.println(error.f_str());
+            xSemaphoreGive( xCommandConnectionSemaphore );
+            delete line;
+            return;
           }
-          token = strtok(NULL, " ");
-        }
 
-        delete moves2;
+          const char* type = doc["type"];
 
+          if (serialLog) Serial.print("Event getIncomingGameEventsLichess Type: ");
+          if (serialLog) Serial.println(type);
 
-        //XXXX
-        xSemaphoreTake( xLichessClockSemaphore, ( TickType_t ) lichessSemaphoreTimeout);
-
-        lichessWhiteTime = doc["state"]["wtime"];
-        lichessBlackTime = doc["state"]["btime"];
-
-        xSemaphoreGive( xLichessClockSemaphore );
+          const char* fen = NULL;
+          const char* moves = NULL;
+          char* lastmove = NULL;
+          const char* orientation = NULL;
 
 
-        if (serialLog) Serial.print("White time: ");
-        if (serialLog) Serial.println(lichessWhiteTime, DEC);
-        if (serialLog) Serial.print("Black time: ");
-        if (serialLog) Serial.println(lichessBlackTime, DEC);
+          boolean receivedLastMove = false;
+          boolean myMove = false;
 
-      }
-
-
-      else if (0 == strcmp(type , "gameState")) {
-
-        if (serialLog) Serial.println("Processing Gamestate ");
+          boolean gamefullProcessed = false;
+          boolean gameStateProcessed = false;
 
 
-        //Detect if game has finished
-        const char* gameStatus = doc["status"];
-        const char* winner = doc["winner"];
+          if (0 == strcmp(type , "gameFull")) {
 
-        if (gameStatus != NULL) {
-          if (serialLog) Serial.print("Gamestatus: ");
-          if (serialLog) Serial.println(gameStatus);
-        }
+            gamefullProcessed = true;
 
-        if (! ((0 == strcmp(gameStatus , "created")) || (0 == strcmp(gameStatus , "started"))  ) ) {
-          //Game finished
-          resetLichessGameActions();
-          delete currentGameID;
-          currentGameID = NULL;
-          if ((0 == strcmp(gameStatus , "stalemate")) || (0 == strcmp(gameStatus , "draw"))   )  {
-            paintLichessGameEndedDraw();
-          } else {
-            if (winner != NULL) {
-              if (0 == strcmp(winner , "white")) {
-                if (!boardInverted) {
-                  paintLichessGameWonBottom();
-                } else {
-                  paintLichessGameWonTop();
-                }
+            if (serialLog) Serial.println("Processing gameFull ");
+
+            moves = doc["state"]["moves"];
+
+            char* moves2 = strdup(moves);
+            char* token = strtok(moves2, " ");
+            int numMoves = 0;
+            while ( token != NULL ) {
+
+              if (token != NULL ) {
+                numMoves++;
+                delete lastmove;
+                lastmove = strdup(token);
               }
+              token = strtok(NULL, " ");
+            }
 
-              if (0 == strcmp(winner , "black")) {
-                if (!boardInverted) {
-                  paintLichessGameWonTop();
-                } else {
-                  paintLichessGameWonBottom();
+            delete moves2;
+
+            if (serialLog) Serial.print("Nummoves: ");
+            if (serialLog) Serial.println(numMoves, DEC);
+
+
+            if (
+              (strcmp(myColour, "black") == 0 && ((numMoves % 2) == 0))
+              ||
+              (strcmp(myColour, "white") == 0 && !((numMoves % 2) == 0))
+            ) {
+              myMove = true;
+            }
+
+            receivedLastMove = true;
+
+            //XXXX
+            xSemaphoreTake( xLichessClockSemaphore, ( TickType_t ) lichessSemaphoreTimeout);
+
+            lichessWhiteTime = doc["state"]["wtime"];
+            lichessBlackTime = doc["state"]["btime"];
+
+            xSemaphoreGive( xLichessClockSemaphore );
+
+            if (serialLog) Serial.print("White time: ");
+            if (serialLog) Serial.println(lichessWhiteTime, DEC);
+            if (serialLog) Serial.print("Black time: ");
+            if (serialLog) Serial.println(lichessBlackTime, DEC);
+
+            if (!doc["white"]["title"].isNull()) {
+              lichessWhiteTitle =  doc["white"]["title"];
+            } else {
+              lichessWhiteTitle = "";
+            }
+
+            if (!doc["black"]["title"].isNull()) {
+              lichessBlackTitle =  doc["black"]["title"];
+            } else {
+              lichessBlackTitle = "";
+            }
+
+            if (!doc["white"]["rating"].isNull()) {
+              lichessWhiteRating = doc["white"]["rating"];
+            } else {
+              lichessWhiteRating = NULL;
+            }
+
+            if (!doc["black"]["rating"].isNull()) {
+              lichessBlackRating = doc["black"]["rating"];
+            } else {
+              lichessBlackRating = NULL;
+            }
+
+
+          }
+
+
+          if (0 == strcmp(type , "gameState") || gamefullProcessed) {
+
+            if (serialLog) Serial.println("Processing Gamestate ");
+
+            gameStateProcessed = true;
+
+
+            //Detect if game has finished
+            const char* gameStatus;
+            const char* winner;
+            if (gamefullProcessed) {
+              gameStatus = doc["state"]["status"];
+              winner = doc["state"]["winner"];
+            } else {
+              gameStatus = doc["status"];
+              winner = doc["winner"];
+            }
+
+            if (gameStatus != NULL) {
+              if (serialLog) Serial.print("Gamestatus: ");
+              if (serialLog) Serial.println(gameStatus);
+            }
+
+            if (! ((0 == strcmp(gameStatus , "created")) || (0 == strcmp(gameStatus , "started"))  ) ) {
+              //          //Game finished
+              //          //Make sure we clear pending draw offers and resign orders
+              //          resetLichessGameActions();
+              //          //Clean running game state
+              //          lichessGameRunning = false;
+              //          disableBoardScanning = true;
+              //          delete currentGameID;
+              //          currentGameID = NULL;
+              markEndGameWhenAllMatches = true;
+              setLichessGameFinished();
+              if (serialLog) Serial.println("Marking game to be ended");
+              if ((0 == strcmp(gameStatus , "stalemate")) || (0 == strcmp(gameStatus , "draw"))   )  {
+                paintLichessGameEndedDraw();
+              } else {
+                if (winner != NULL) {
+                  if (0 == strcmp(winner , "white")) {
+                    if (!boardInverted) {
+                      paintLichessGameWonBottom();
+                    } else {
+                      paintLichessGameWonTop();
+                    }
+                  }
+
+                  if (0 == strcmp(winner , "black")) {
+                    if (!boardInverted) {
+                      paintLichessGameWonTop();
+                    } else {
+                      paintLichessGameWonBottom();
+                    }
+                  }
                 }
               }
             }
+
+            //Detect if draw offer or takeback proposal received
+            boolean wDrawOffer;
+            boolean wTakebackProposal;
+            boolean bDrawOffer;
+            boolean bTakebackProposal;
+            if (gamefullProcessed) {
+              wDrawOffer = doc["state"]["wdraw"];
+              wTakebackProposal = doc["state"]["wtakeback"];
+
+              bDrawOffer = doc["state"]["bdraw"];
+              bTakebackProposal = doc["state"]["btakeback"];
+            } else {
+              wDrawOffer = doc["wdraw"];
+              wTakebackProposal = doc["wtakeback"];
+
+              bDrawOffer = doc["bdraw"];
+              bTakebackProposal = doc["btakeback"];
+            }
+
+
+
+            if  (
+              (strcmp(myColour, "white") == 0 && bDrawOffer )
+              ||
+              (strcmp(myColour, "black") == 0 && wDrawOffer)
+            ) {
+              if (serialLog) Serial.println("OPPONENT DRAW OFFER!!-------------");
+              pendingLichessOpponentRequest = OPPONENT_DRAW_OFFER;
+              askForLichessConfirmationOpponentDrawOffer();
+            }
+
+
+            if (
+              (strcmp(myColour, "black") == 0 && wTakebackProposal)
+              ||
+              (strcmp(myColour, "white") == 0 && bTakebackProposal)
+            ) {
+              if (serialLog) Serial.println("OPPONENT TAKEBACK PROPOSAL!!-------------");
+              pendingLichessOpponentRequest = OPPONENT_TAKEBACK_PROPOSAL;
+              askForLichessConfirmationOpponentTakebackProposal();
+
+            }
+
+            if (gamefullProcessed) {
+              moves = doc["state"]["moves"];
+            } else {
+              moves = doc["moves"];
+            }
+
+
+
+
+            char* moves2 = strdup(moves);
+            char* token = strtok(moves2, " ");
+            int numMoves = 0;
+            while ( token != NULL ) {
+
+              if (token != NULL ) {
+                numMoves++;
+                delete lastmove;
+                lastmove = strdup(token);
+              }
+              token = strtok(NULL, " ");
+            }
+
+            delete moves2;
+
+            receivedLastMove = true;
+
+            if (serialLog) Serial.print("Nummoves: ");
+            if (serialLog) Serial.println(numMoves, DEC);
+
+            if (
+              (strcmp(myColour, "black") == 0 && ((numMoves % 2) == 0))
+              ||
+              (strcmp(myColour, "white") == 0 && !((numMoves % 2) == 0))
+            ) {
+              myMove = true;
+            }
+
+
+
+            xSemaphoreTake( xLichessClockSemaphore, ( TickType_t ) lichessSemaphoreTimeout);
+
+            if (gamefullProcessed) {
+              lichessWhiteTime = doc["state"]["wtime"];
+              lichessBlackTime = doc["state"]["btime"];
+            } else {
+              lichessWhiteTime = doc["wtime"];
+              lichessBlackTime = doc["btime"];
+            }
+
+
+
+            xSemaphoreGive( xLichessClockSemaphore );
+
+
+            if (serialLog) Serial.print("White time: ");
+            if (serialLog) Serial.println(lichessWhiteTime, DEC);
+            if (serialLog) Serial.print("Black time: ");
+            if (serialLog) Serial.println(lichessBlackTime, DEC);
+            if (serialLog) Serial.print("My move: ");
+            if (serialLog) Serial.println(myMove, DEC);
+
           }
-        }
 
-        //Detect if draw offer or takeback proposal received
-
-        boolean wDrawOffer = doc["wdraw"];
-        boolean wTakebackProposal = doc["wtakeback"];
-
-        boolean bDrawOffer = doc["bdraw"];
-        boolean bTakebackProposal = doc["btakeback"];
-
-        if  (
-          (strcmp(myColour, "white") == 0 && bDrawOffer )
-          ||
-          (strcmp(myColour, "black") == 0 && wDrawOffer)
-        ) {
-          if (serialLog) Serial.println("OPPONENT DRAW OFFER!!-------------");
-          pendingLichessOpponentRequest = OPPONENT_DRAW_OFFER;
-          askForLichessConfirmationOpponentDrawOffer();
-        }
+          if (!gameStateProcessed && !gamefullProcessed) {
+            //Chat or Unknown
+            if (serialLog) Serial.println("Unsupported command:");
+            token = strtok(NULL, "\r\n");
+            continue;
+          }
 
 
-        if (
-          (strcmp(myColour, "black") == 0 && wTakebackProposal)
-          ||
-          (strcmp(myColour, "white") == 0 && bTakebackProposal)
-        ) {
-          if (serialLog) Serial.println("OPPONENT TAKEBACK PROPOSAL!!-------------");
-          pendingLichessOpponentRequest = OPPONENT_TAKEBACK_PROPOSAL;
-          askForLichessConfirmationOpponentTakebackProposal();
-
-        }
+          //paintLichessPlayerTopSprite("", opponentName, NULL);
+          //paintLichessPlayerBottomSprite("", username, NULL);
 
 
+          if (strcmp(lichessAutoInvertEnabled, "TRUE") == 0) {
+            if (strcmp(myColour, "white") == 0) {
+              boardInverted = false;
+              if (serialLog) Serial.print("Board NOT reversed: ");
+              if (serialLog) Serial.println(myColour);
+            } else {
+              if (serialLog) Serial.print("Board REVERSED: ");
+              if (serialLog) Serial.println(myColour);
+              boardInverted = true;
+            }
+          } else {
+            boardInverted = false;
+          }
+
+          //Enable board scanning if disabled
+          disableBoardScanning = false;
+
+          if (gamefullProcessed && !markEndGameWhenAllMatches && !endGameWhenAllMatches) {
+
+            gamefullProcessed = false;
+
+            paintLichessPlayerClear();
 
 
-        moves = doc["moves"];
+            if (!boardInverted) {
 
-        char* moves2 = strdup(moves);
-        char* token = strtok(moves2, " ");
-        while ( token != NULL ) {
-          if (token != NULL ) {
+              if (strcmp(myColour, "white") == 0) {
+                paintLichessPlayerTopSprite(lichessBlackTitle, opponentName, lichessBlackRating);
+                paintLichessPlayerBottomSprite(lichessWhiteTitle, username, lichessWhiteRating);
+              } else {
+                paintLichessPlayerTopSprite(lichessBlackTitle, username, lichessBlackRating);
+                paintLichessPlayerBottomSprite(lichessWhiteTitle, opponentName, lichessWhiteRating);
+              }
+            } else {
+              if (strcmp(myColour, "white") == 0) {
+                paintLichessPlayerTopSprite(lichessWhiteTitle, username, lichessWhiteRating);
+                paintLichessPlayerBottomSprite(lichessBlackTitle, opponentName, lichessBlackRating);
+              } else {
+                paintLichessPlayerTopSprite(lichessWhiteTitle, opponentName, lichessWhiteRating);
+                paintLichessPlayerBottomSprite(lichessBlackTitle, username, lichessBlackRating);
+              }
+
+            }
+
+            refreshLichessClocks();
+
+          }
+
+
+          if (receivedLastMove && !myMove) {
+            beep();
+            delay(100);
+            beep();
+          }
+
+
+          if (serialLog) Serial.println("Get rest of Gamestate data for FEN");
+          //Now get rest of data from /api/account/playing
+
+
+          if (markEndGameWhenAllMatches) {
+            //Get fen via last fen
+            xSemaphoreGive( xCommandConnectionSemaphore );
+
+            getLastFenOfRunningGame() ;
+
+            xSemaphoreTake( xCommandConnectionSemaphore, ( TickType_t ) lichessSemaphoreTimeout );
+          } else  {
+            //Get fen via game list
+            xSemaphoreGive( xCommandConnectionSemaphore );
+
+            while (!getRunningGameLichess()) {
+              if (serialLog) Serial.println("Retrying getRunningGameLichess");
+            }
+
+            xSemaphoreTake( xCommandConnectionSemaphore, ( TickType_t ) lichessSemaphoreTimeout );
+          }
+
+
+          if (currentGameID == NULL) {
+            //Game aborted
+            if (serialLog) Serial.println("Game aborted");
+            //xSemaphoreGive( xCommandConnectionSemaphore );
+            //delete line;
+            //return;
+          }
+
+
+          //Process FEN into screen position
+          processFenIntoLichessPosition(currentFen);
+          if (serialLog) Serial.println("FEN PROCESSED----------------------------------------------------");
+          if (serialLog) Serial.println(currentFen);
+          //Last game update
+
+
+          //Process LASTMOVE into screen marking
+          for (int i = 0; i < 64; i++) {
+            lichessBoardPositionMarked[i] = 0;
+          }
+
+          if (serialLog) Serial.println("Processing lastmove");
+
+          //do not process out mymoves
+          if (lastmove != NULL && receivedLastMove && !myMove) {
+            //extract the 2 marked squares
+            if (serialLog) Serial.print("Loading LASTMOVE: ");
+            if (serialLog) Serial.println(lastmove);
+
+            if (strlen(lastmove) >= 4 && lastmove[0] != 0x20 && lastmove[1] != 0x20 && lastmove[2] != 0x20 && lastmove[3] != 0x20) {
+              byte firstSquare = (8 - (lastmove[1] - 0x30)) * 8 + (lastmove[0] - 0x61);
+              byte secondSquare = (8 - (lastmove[3] - 0x30)) * 8 + (lastmove[2] - 0x61);
+
+              lichessBoardPositionMarked[firstSquare] = 1;
+              lichessBoardPositionMarked[secondSquare] = 1;
+
+              if (serialLog) Serial.print("First square: ");
+              if (serialLog) Serial.println(firstSquare, DEC);
+
+              if (serialLog) Serial.print("Second square: ");
+              if (serialLog) Serial.println(secondSquare);
+
+              //Register a move on the board, doesn't need to be very correct
+              registerMovement(lichessBoardPosition[firstSquare],  firstSquare,  lichessBoardPosition[firstSquare],  secondSquare,
+                               lichessBoardPosition[firstSquare], secondSquare, false);
+
+            }
+
             delete lastmove;
-            lastmove = strdup(token);
           }
-          token = strtok(NULL, " ");
+
+
+
+          if (markEndGameWhenAllMatches) {
+            markEndGameWhenAllMatches = false;
+            endGameWhenAllMatches = true;
+          }
+
+          if (currentGameID == NULL) {
+            fixBoardPositionLichessData();
+            setLichessBoardLeds();
+          }
+
+
+          lichessGameRunning = true;
+
         }
 
-        delete moves2;
+        token = strtok(NULL, "\r\n");
 
-        xSemaphoreTake( xLichessClockSemaphore, ( TickType_t ) lichessSemaphoreTimeout);
-
-        lichessWhiteTime = doc["wtime"];
-        lichessBlackTime = doc["btime"];
-
-        xSemaphoreGive( xLichessClockSemaphore );
-
-
-        if (serialLog) Serial.print("White time: ");
-        if (serialLog) Serial.println(lichessWhiteTime, DEC);
-        if (serialLog) Serial.print("Black time: ");
-        if (serialLog) Serial.println(lichessBlackTime, DEC);
-
-        if (!myTurn) {
-          beep();
-          delay(100);
-          beep();
-        }
-
-
-
-
-      }  else {
-        //Chat or Unknown
-        if (serialLog) Serial.println("Unsupported command:");
-        xSemaphoreGive( xCommandConnectionSemaphore );
-        delete line;
-        return;
       }
 
-
-      if (serialLog) Serial.println("Get rest of Gamestate data ");
-      //Now get rest of data from /api/account/playing
-
-      xSemaphoreGive( xCommandConnectionSemaphore );
-
-      while (!getRunningGameLichess()) {
-        if (serialLog) Serial.println("Retrying getRunningGameLichess");
-      }
-
-      xSemaphoreTake( xCommandConnectionSemaphore, ( TickType_t ) lichessSemaphoreTimeout );
-
-
-      if (currentGameID == NULL) {
-        if (serialLog) Serial.println("JSON error getIncomingGameEventsLichess ");
-        xSemaphoreGive( xCommandConnectionSemaphore );
-        delete line;
-        return;
-        //Game aborted
-        if (serialLog) Serial.println("Game aborted");
-        xSemaphoreGive( xCommandConnectionSemaphore );
-        delete line;
-        return;
-      }
-
-      paintLichessPlayerClear();
-
-      paintLichessPlayerTopSprite("", opponentName, NULL);
-      paintLichessPlayerBottomSprite("", username, NULL);
-
-
-      if (strcmp(lichessAutoInvertEnabled, "TRUE")==0) {
-        if (strcmp(myColour, "white") == 0) {
-          boardInverted = false;
-          if (serialLog) Serial.print("Board NOT reversed: ");
-          if (serialLog) Serial.println(myColour);
-        } else {
-          if (serialLog) Serial.print("Board REVERSED: ");
-          if (serialLog) Serial.println(myColour);
-          boardInverted = true;
-        }
-      }
-
-      //Process FEN into screen position
-      processFenIntoLichessPosition(currentFen);
-
-      //      if (!boardInverted) {
-      //        paintLichessTimeTop(lichessBlackTime, !myTurn);
-      //        paintLichessTimeBottom(lichessWhiteTime, myTurn);
-      //      } else {
-      //        paintLichessTimeTop(lichessWhiteTime, !myTurn);
-      //        paintLichessTimeBottom(lichessBlackTime, myTurn);
-      //      }
-
-
-
-
-      //Process LASTMOVE into screen marking
-      for (int i = 0; i < 64; i++) {
-        lichessBoardPositionMarked[i] = 0;
-      }
-
-      if (serialLog) Serial.println("Processing lastmove");
-
-      if (lastmove != NULL) {
-        //extract the 2 marked squares
-        //if (serialLog) Serial.print("Loading LASTMOVE: ");
-        //if (serialLog) Serial.println(lastmove);
-
-        if (strlen(lastmove) >= 4 && lastmove[0] != 0x20 && lastmove[1] != 0x20 && lastmove[2] != 0x20 && lastmove[3] != 0x20) {
-          byte firstSquare = (8 - (lastmove[1] - 0x30)) * 8 + (lastmove[0] - 0x61);
-          byte secondSquare = (8 - (lastmove[3] - 0x30)) * 8 + (lastmove[2] - 0x61);
-
-          lichessBoardPositionMarked[firstSquare] = 1;
-          lichessBoardPositionMarked[secondSquare] = 1;
-        }
-
-        delete lastmove;
-      }
     }
     delete line;
   }
@@ -1570,12 +2130,38 @@ void getIncomingGameEventsLichess() {
 
 
 
+void doEndGameWhenAllMatches() {
 
+  if (serialLog) Serial.println("Finish game by all matches---------------------------------------------------------------");
+
+  //Wait for the board to turn off the leds
+  clearAllBoardLeds();
+  forceAllLedsOff();
+
+  //Game finished
+  //Make sure we clear pending draw offers and resign orders
+  resetLichessGameActions();
+  //Clean running game state
+  setLichessGameFinished();
+  lichessGameRunning = false;
+  disableBoardScanning = true;
+  delete currentGameID;
+  currentGameID = NULL;
+  endGameWhenAllMatches = false;
+  markEndGameWhenAllMatches = false;
+
+  closeWifiClientStream = true;
+
+  beep();
+
+  if (serialLog) Serial.println("END Finish game by all matches");
+
+}
 
 
 
 void fixBoardPositionLichessData() {
-  //In lichess mode there is no point in tracking all the pieces, the server is only interested in coordinated and moves
+  //In lichess mode there is no point in tracking all the pieces, the server is only interested in coordinates and moves
   //So we fix board position based on lichess FEN
 
 
@@ -1584,12 +2170,7 @@ void fixBoardPositionLichessData() {
   boolean allMatch = true;
   for (int i = 0; i < 64; i++) {
 
-    int index = i;
-//    if (boardInverted) {
-//      index = 63 - i;
-//    }
-
-    if (scannedpos[index] == false && lichessBoardPosition[i] != 0 || scannedpos[index] == true && lichessBoardPosition[i] == 0) {
+    if (scannedpos[i] == false && lichessBoardPosition[i] != 0 || scannedpos[i] == true && lichessBoardPosition[i] == 0) {
       allMatch = false;
       break;
     }
@@ -1597,11 +2178,20 @@ void fixBoardPositionLichessData() {
 
   if (allMatch) {
     for (int i = 0; i < 64; i++) {
-      int index = i;
-      if (boardInverted) {
-        index = 63 - i;
-      }
-      currentPos[index] = lichessBoardPosition[i];
+      currentPos[i] = lichessBoardPosition[i];
+      lichessBoardPositionMarked[i] = 0;
+
+    }
+
+
+    if (endGameWhenAllMatches) {
+
+      xSemaphoreTake( xScreenSemaphore, ( TickType_t ) screenSemaphoreTimeout );
+
+      doEndGameWhenAllMatches();
+
+      xSemaphoreGive( ( xScreenSemaphore ) );
+
     }
   }
 
@@ -1612,19 +2202,14 @@ void fixBoardPositionLichessData() {
   if (!allMatch) {
     for (int i = 0; i < 64; i++) {
 
-      int index = i;
-      if (boardInverted) {
-        index = 63 - i;
-      }
-
       if (
-        (scannedpos[index] == false  && lichessBoardPosition[i] == 0 )  //empty squares both sides
+        (scannedpos[i] == false  && lichessBoardPosition[i] == 0 )  //empty squares both sides
         ||
-        (scannedpos[index] == true && lichessBoardPosition[i] != 0 && lichessBoardPositionMarked[i] == 0) //occupied squares both sides not in last move
+        (scannedpos[i] == true && lichessBoardPosition[i] != 0 && lichessBoardPositionMarked[i] == 0) //occupied squares both sides not in last move
         ||
-        (scannedpos[index] == true && lichessBoardPosition[i] == 0) //occupied squares in the board that should be empty
+        (scannedpos[i] == true && lichessBoardPosition[i] == 0) //occupied squares in the board that should be empty
       ) {
-        currentPos[index] = lichessBoardPosition[i];
+        currentPos[i] = lichessBoardPosition[i];
       }
     }
 
@@ -1643,21 +2228,24 @@ void fixBoardPositionLichessData() {
 void setLichessBoardLeds() {
 
   //Light up all the leds where the current board position is different from the Lichess board position
+  //If there is at least one of those leds that correspond to the last move, flash all of the move
   for (int i = 0; i < 64; i++) {
 
-    int index = i;
-    if (boardInverted) {
-      index = 63 - i;
-    }
+
 
     byte valueToSet = 0;
-    if (currentPos[index] != lichessBoardPosition[i] || lichessBoardPosition[i] != 0 && scannedpos[index] == false || lichessBoardPosition[i] == 0 && scannedpos[index] == true) {
+    if (currentPos[i] != lichessBoardPosition[i] || lichessBoardPosition[i] != 0 && scannedpos[i] == false || lichessBoardPosition[i] == 0 && scannedpos[i] == true) {
+      valueToSet = 4;
+    }
+
+    if (lichessBoardPositionMarked[i] == 1) {
       valueToSet = 4;
     }
 
 
     for (int j = 0; j < 8; j++) {
-      ledStatusBuffer[63 - index + (64 * j)] = valueToSet;
+      //Ledstatusbuffer is inverted later if boardInverted to get ledBuffer
+      ledStatusBuffer[63 - i + (64 * j)] = valueToSet;
     }
   }
 
@@ -1677,17 +2265,42 @@ boolean sendOutgoingMovementLichess(byte originSquare, byte destinationSquare) {
 
   //Detect white promotion
   if (((destinationSquare / 8) == 0) && (lichessBoardPosition[originSquare] == 1)) {
-    promotionPiece = 'Q';
 
-    //Alternative piece TBD
+    if (serialLog) Serial.print("Lichess white promotion, lastScannedPieceLichess: ");
+    if (serialLog) Serial.println(lastScannedPieceLichess, HEX);
+     
+    if (lastScannedPieceLichess == WBISHOP || lastScannedPieceLichess == BBISHOP ) {
+       promotionPiece = 'b';
+    } else if (lastScannedPieceLichess == WROOK || lastScannedPieceLichess == BROOK ) {
+       promotionPiece = 'r';
+    } else if (lastScannedPieceLichess == WKNIGHT || lastScannedPieceLichess == BKNIGHT ) {
+       promotionPiece = 'n';
+    } else {
+      promotionPiece = 'q';
+    }
+   
   }
 
   //Detect black promotion
   if (((destinationSquare / 8) == 7) && (lichessBoardPosition[originSquare] == 7)) {
-    promotionPiece = 'q';
 
-    //Alternative piece TBD
+    if (serialLog) Serial.print("Lichess black promotion, lastScannedPieceLichess: ");
+    if (serialLog) Serial.println(lastScannedPieceLichess, HEX);
+    
+    if (lastScannedPieceLichess == WBISHOP || lastScannedPieceLichess == BBISHOP ) {
+       promotionPiece = 'b';
+    } else if (lastScannedPieceLichess == WROOK || lastScannedPieceLichess == BROOK ) {
+       promotionPiece = 'r';
+    } else if (lastScannedPieceLichess == WKNIGHT || lastScannedPieceLichess == BKNIGHT ) {
+       promotionPiece = 'n';
+    } else {
+      promotionPiece = 'q';
+    }
+
   }
+
+
+  lastScannedPieceLichess = 0;
 
   movement[0] = char(originSquare % 8 + 0x61);
   movement[1] = char(8 - (originSquare / 8) + 0x30);
@@ -1701,7 +2314,7 @@ boolean sendOutgoingMovementLichess(byte originSquare, byte destinationSquare) {
     return true;
   }
 
-  if (wifiClient.connected() || wifiClient.connect(server, 443)) {
+  if (wifiClient.connected() || (wifiClient.connect(server, 443) && setClientTimeout(&wifiClient))) {
 
     if (serialLog) Serial.print("Sending movement on sendOutgoingMovementLichess: ");
 
@@ -1728,17 +2341,26 @@ boolean sendOutgoingMovementLichess(byte originSquare, byte destinationSquare) {
       return false;
     }
 
-    int timeout = millis() + 2000;
+    if (returnCode == 400) {
+      //Bad movement, no point in sending again
+      if (serialLog) Serial.println("Bad movement detected, aborting");
+      xSemaphoreGive( xCommandConnectionSemaphore );
+      return true;
+    }
+
+    unsigned long timeout = millis() + 2000l;
     while (wifiClient.available() == 0) {
-      if (timeout - millis() < 0) {
+      if (millis() > timeout) {
         if (serialLog) Serial.println("Client Timeout sendOutgoingMovementLichess");
         wifiClient.stop();
         xSemaphoreGive( xCommandConnectionSemaphore );
         return false;
       }
+      delay(50);
     }
 
     char* line = getLineFromClient(&wifiClient);
+
 
     if (serialLog) Serial.print("Leida linea: ");
     if (serialLog) Serial.println(line);
@@ -1787,9 +2409,83 @@ boolean isMyTurnLichess() {
 
 
 
-void keepAliveLichess( void * pvParameters ) {
+
+
+void loopLichess( void * pvParameters ) {
 
   for (;;) {
+
+    //if (serialLog) Serial.println("Lichess loop iteration");
+
+    if (WiFi.status() == WL_CONNECTED) {
+
+      int currentRssi = WiFi.RSSI();
+
+      if (currentRssi < 0) {
+
+        //    RSSI Value Range  WiFi Signal Strength
+        //    RSSI > -30 dBm  Amazing
+        //    RSSI < – 55 dBm   Very good signal
+        //    RSSI < – 67 dBm  Fairly Good
+        //    RSSI < – 70 dBm  Okay
+        //    RSSI < – 80 dBm  Not good
+        //    RSSI < – 90 dBm  Extremely weak signal (unusable)
+
+        //Calculate signal wifi strength to show on the screen
+        //1 OK (-75>=RSSI)
+        //2 WEAK (-89>=RSSI<-75)
+        //3 BAD (RSSI<-89)
+        unsigned long now = millis();
+
+        if (currentRssi < lowestRssiInterval) {
+          lowestRssiInterval = currentRssi;
+        }
+
+        if (now > (lastRssiChange + rssiChangeInterval)) {
+
+          if (serialLog) Serial.print("WIFI RSSI: ");
+          if (serialLog) Serial.println(lowestRssiInterval);
+
+
+          if (lowestRssiInterval >= -75) {
+            measuredRssi = 1; //OK
+          } else if ((lowestRssiInterval < -75) && (lowestRssiInterval >= -89 )) {
+            measuredRssi = 2; //MEH
+          } else {
+            measuredRssi = 3; //BAD
+          }
+
+          lowestRssiInterval = currentRssi;
+          lastRssiChange = now;
+
+        }
+
+      }
+
+    }
+
+
+    //Lichess mode
+    if (isLichessConnected) {
+
+      if (closeWifiClientStream) {
+        wifiClientStreamInitializedStatus = false;
+        wifiClientStream.stop();
+        closeWifiClientStream = false;
+      }
+
+      if (isLichessGameActive()) {
+        getIncomingGameEventsLichess();
+
+      } else {
+        getLichessTvEvents();
+
+      }
+
+    }
+
+
+    //Refresh connection if needed
     long current = millis();
 
     //if (serialLog) Serial.println("Tick...");
@@ -1804,7 +2500,6 @@ void keepAliveLichess( void * pvParameters ) {
 
 
     if (wifiClientStreamInitializedStatus && lastTimeCommandConnectionUse != 0 && current > (lastTimeCommandConnectionUse + delayToPing))  {
-      //if ( xSemaphoreTake( xCommandConnectionSemaphore, ( TickType_t ) 0 ) == pdTRUE ) {
 
       if (serialLog) Serial.println("Refresh in");
 
@@ -1821,15 +2516,10 @@ void keepAliveLichess( void * pvParameters ) {
 
       if (serialLog) Serial.println("Refresh out");
 
-      //xSemaphoreGive( xCommandConnectionSemaphore );
-      //}
+
     }
 
-    //    if (isLichessConnected && !isLichessGameActive() && wifiClientStreamInitializedStatus) {
-    //      refreshStreamConnection();
-    //    }
-
-    delay(500);
+    vTaskDelay(200 / portTICK_PERIOD_MS);
   }
 }
 
@@ -1837,29 +2527,51 @@ void keepAliveLichess( void * pvParameters ) {
 
 
 
+void initLichessLoopTask() {
 
 
-void initRefreshLichessConnectionsTask() {
-
-  if (refreshLichessConnectionsTaskEnabled) {
-    return;
-  }
-
-  refreshLichessConnectionsTaskEnabled = true;
-
-  //if more than 3 seconds since last request on command connection, send dummy command to keep it alive
 
   TaskHandle_t Task1;
 
   xTaskCreatePinnedToCore(
-    keepAliveLichess, /* Task function. */
-    "LichessKeepAlive",   /* name of task. */
+    loopLichess, /* Task function. */
+    "loopLichess",   /* name of task. */
     10000,     /* Stack size of task */
     NULL,      /* parameter of the task */
     1,         /* priority of the task */
     &Task1,    /* Task handle to keep track of created task */
-    1);        /* Core number */
+    0);        /* Core number */
 }
+
+
+
+
+//void initRefreshLichessConnectionsTask() {
+//
+//  if (refreshLichessConnectionsTaskEnabled) {
+//    return;
+//  }
+//
+//  refreshLichessConnectionsTaskEnabled = true;
+//
+//  //if more than 3 seconds since last request on command connection, send dummy command to keep it alive
+//
+//  TaskHandle_t Task1;
+//
+//  xTaskCreatePinnedToCore(
+//    keepAliveLichess, /* Task function. */
+//    "LichessKeepAlive",   /* name of task. */
+//    10000,     /* Stack size of task */
+//    NULL,      /* parameter of the task */
+//    1,         /* priority of the task */
+//    &Task1,    /* Task handle to keep track of created task */
+//    0);        /* Core number */
+//}
+//
+
+
+
+
 /* if (serialLog) Serial.println("");
   if (serialLog) Serial.println("Scanned");
 
@@ -1896,7 +2608,7 @@ void initRefreshLichessConnectionsTask() {
 void refreshLichessClocks() {
 
   //Only refresh if game active
-  if (lichessStreamTvActive || isLichessGameActive()) {
+  if (lichessStreamTvActive || (isLichessGameActive() && !endGameWhenAllMatches && ! markEndGameWhenAllMatches)) {
 
     if (!boardInverted) {
       paintLichessTimeTop(lichessBlackTime, !myTurn);
@@ -1906,25 +2618,30 @@ void refreshLichessClocks() {
       paintLichessTimeBottom(lichessBlackTime, myTurn);
     }
   }
-  delay(10);
+  //delay(10);
 }
 
 
 
 
 
-void launchLichessSeek(const char* lichessTime, const char* lichessIncrement, const char* lichessRated, const char* lichessColor) {
+void launchLichessSeek(const char* lichessTime, const char* lichessIncrement, const char* lichessRated, const char* lichessColor, const char* lichessElo) {
 
   showLichessSeekScreen();
 
   xSemaphoreTake( xCommandConnectionSemaphore, ( TickType_t ) lichessSemaphoreTimeout );
 
-  if (wifiClient.connected() || wifiClient.connect(server, 443)) {
+  if (wifiClient.connected() || (wifiClient.connect(server, 443) && setClientTimeout(&wifiClient))) {
 
     if (serialLog) Serial.print("launchLichessSeek: ");
 
     char body[200];
-    sprintf(body, "time=%s&increment=%s&color=%s&rated=%s&variant=standard", lichessTime, lichessIncrement, lichessColor, lichessRated );
+
+    if (strcmp(lichessElo, "NONE") == 0 || strcmp(lichessElo, "") == 0) {
+      sprintf(body, "time=%s&increment=%s&color=%s&rated=%s&variant=standard", lichessTime, lichessIncrement, lichessColor, lichessRated );
+    } else {
+      sprintf(body, "time=%s&increment=%s&color=%s&rated=%s&variant=standard&ratingRange=%s", lichessTime, lichessIncrement, lichessColor, lichessRated, lichessElo );
+    }
 
     if (serialLog) Serial.println(body);
     if (serialLog) Serial.print("Len: ");
@@ -1960,13 +2677,12 @@ void launchLichessSeek(const char* lichessTime, const char* lichessIncrement, co
 
     while (wifiClient.connected()) {
 
-      if (serialLog) Serial.println("Still searching....");
 
       if (wifiClient.available()) {
 
         char* line = new char[100];
         memset(line, 0, 100);
-        wifiClient.readBytesUntil('\n', line, 100);
+        myReadBytesUntil(&wifiClient, '\n', false, line, 100);
 
         if (serialLog) Serial.print("Leido linea: ");
         if (serialLog) Serial.println(line);
@@ -1982,6 +2698,8 @@ void launchLichessSeek(const char* lichessTime, const char* lichessIncrement, co
         delete line;
       }
 
+      vTaskDelay(250 / portTICK_PERIOD_MS);
+      if (serialLog) Serial.println("Still searching....");
 
     }
 
@@ -1992,6 +2710,7 @@ void launchLichessSeek(const char* lichessTime, const char* lichessIncrement, co
 
     wifiClient.stop();
     wifiClient.connect(server, 443);
+    setClientTimeout(&wifiClient);
 
     //Check if game was actually launched
     if (serialLog) Serial.println("launchLichessSeek checking if game launched with getRunningGameLichess");
@@ -2015,6 +2734,11 @@ void lichessButtonPush(byte button) {
 
   if (isLichessGameActive()) {
 
+    if (endGameWhenAllMatches || markEndGameWhenAllMatches) {
+      doEndGameWhenAllMatches();
+      return;
+    }
+
     if (pendingLichessOpponentRequest) {
       if (button == BUTTON_BACK) {
 
@@ -2026,7 +2750,6 @@ void lichessButtonPush(byte button) {
         if (pendingLichessOpponentRequest == OPPONENT_TAKEBACK_PROPOSAL) {
           if (serialLog) Serial.println("ACCEPT TAKEBACK OFFER--------------");
           sendLichessTakeBack(true);
-          //TBD
         }
 
       } else {
@@ -2110,6 +2833,7 @@ void lichessButtonPush(byte button) {
   char* lichessIncrement;
   char* lichessRated;
   char* lichessColor;
+  char* lichessElo;
 
   switch (button) {
     case BUTTON_BACK:
@@ -2117,6 +2841,7 @@ void lichessButtonPush(byte button) {
       lichessIncrement = lichessi1;
       lichessRated = lichessr1;
       lichessColor = lichessc1;
+      lichessElo = lichesse1;
       break;
 
     case BUTTON_MINUS:
@@ -2124,6 +2849,7 @@ void lichessButtonPush(byte button) {
       lichessIncrement = lichessi2;
       lichessRated = lichessr2;
       lichessColor = lichessc2;
+      lichessElo = lichesse2;
       break;
 
     case BUTTON_PLAY:
@@ -2131,6 +2857,7 @@ void lichessButtonPush(byte button) {
       lichessIncrement = lichessi3;
       lichessRated = lichessr3;
       lichessColor = lichessc3;
+      lichessElo = lichesse3;
       break;
 
     case BUTTON_PLUS:
@@ -2138,6 +2865,7 @@ void lichessButtonPush(byte button) {
       lichessIncrement = lichessi4;
       lichessRated = lichessr4;
       lichessColor = lichessc4;
+      lichessElo = lichesse4;
       break;
 
     case BUTTON_NEXT:
@@ -2145,6 +2873,7 @@ void lichessButtonPush(byte button) {
       lichessIncrement = lichessi5;
       lichessRated = lichessr5;
       lichessColor = lichessc5;
+      lichessElo = lichesse5;
       break;
 
     case BUTTON_LEVER:
@@ -2152,6 +2881,7 @@ void lichessButtonPush(byte button) {
       lichessIncrement = lichessi6;
       lichessRated = lichessr6;
       lichessColor = lichessc6;
+      lichessElo = lichesse6;
       break;
 
     default:
@@ -2167,7 +2897,7 @@ void lichessButtonPush(byte button) {
   if (!secondLichessButtonPush) {
 
     //Enable overlay to ask for confirmation
-    askForLichessConfirmation(lichessTime, lichessIncrement, lichessRated, lichessColor);
+    askForLichessConfirmation(lichessTime, lichessIncrement, lichessRated, lichessColor, lichessElo);
     secondLichessButtonPush = button;
 
   } else {
@@ -2183,13 +2913,17 @@ void lichessButtonPush(byte button) {
     secondLichessButtonPush = 0;
     cancelLichessConfirmation();
     if (serialLog) Serial.println("LAUNCHING SEEK");
-    launchLichessSeek(lichessTime, lichessIncrement, lichessRated, lichessColor);
+    launchLichessSeek(lichessTime, lichessIncrement, lichessRated, lichessColor, lichessElo);
 
   }
 
 
 }
 
+
+boolean isLichessFullyInitialized() {
+  return lichessFullyInitialized;
+}
 
 void resetLichessGameActions() {
   secondLichessButtonPush = 0;

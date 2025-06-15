@@ -11,6 +11,11 @@
 #include "system_update.h"
 
 
+uint32_t remoteUpdateFileSize = 0;
+char* remoteUpdateFileCRC;
+boolean sendRemoteUpdateFileOverBLE= false;
+char* remoteUpdateFileName;
+
 
 // perform system update
 void performUpdate(Stream &updateSource, size_t updateSize, fs::FS &fs, char* updateFileName) {
@@ -124,7 +129,7 @@ void updateFromFS(fs::FS &fs) {
         tft.println("This will take up to two minutes, please wait");
         char crc[11];
         uint32_t len;
-        sprintf(crc, "%#08x", crc32(file, len));
+        sprintf(crc, "%#10.8x", crc32(file, len));
         if (strcmp(String(file.name()).substring(8, 18).c_str(), crc) == 0) {
           tft.print("Found valid update file with CRC: ");
           tft.println(crc);
@@ -202,4 +207,129 @@ void updateFromFS(fs::FS &fs) {
   }
 
   delete updateBinName;
+}
+
+
+
+void checkRemoteUpdateFromFS(fs::FS &fs) {
+
+  File root = fs.open("/");
+  root.rewindDirectory();
+  File file = root.openNextFile();
+
+  char* updateBinName;
+
+  int numfiles = 0;
+
+  while (true) {
+
+    if (!file.isDirectory()) {
+
+
+      if (strlen(file.name()) == 22
+          && strcmp(String(file.name()).substring(0, 8).c_str(), "/remote_") == 0
+          && strcmp(String(file.name()).substring(18, 22).c_str(), ".bin") == 0
+         )
+      {
+
+        File updateBin = fs.open(file.name());
+
+        updateBinName = strdup(file.name());
+                
+        remoteUpdateFileSize = updateBin.size(); 
+        remoteUpdateFileCRC = strdup(String(file.name()).substring(8, 18).c_str());
+        remoteUpdateFileName = strdup(file.name());
+        
+        updateBin.close();    
+
+        //fs.remove(remoteUpdateFileName);
+      
+      }
+    }
+    file.close();
+    file = root.openNextFile();
+
+    if (!file) {
+      break;
+    }
+    
+  }
+  
+}
+
+
+void performRemoteUpdate() {
+
+  if (serialLog) Serial.print("Starting remote update from file: ");
+  if (serialLog) Serial.println(remoteUpdateFileName);
+
+  if (SD.begin(SD_CS)) {
+
+    uint8_t cardType;
+    cardType = SD.cardType();
+
+    if (cardType == CARD_NONE) {
+      if (serialLog) Serial.println("SD card not found");
+      return;
+    } 
+
+
+   File fich = SD.open(remoteUpdateFileName);
+
+   char* fullStringBuffer;
+
+   while (fich.available()) {
+
+        uint8_t buffer[180];
+        int leido = fich.read(buffer, sizeof(buffer));
+        
+        sendDataTypeBBoard(buffer, leido);
+        delay(10);
+      }
+
+   fich.close();
+
+   delay(5000);
+
+   if (serialLog) Serial.println("Removing remote update file");
+
+   SD.remove(remoteUpdateFileName);
+   remoteUpdateFileSize = 0;
+
+   SD.end();
+
+   } else {
+    if (serialLog) Serial.println("SD CARD NOT FOUND");
+  }
+
+  //Disable SD card
+  digitalWrite(SD_CS, true);
+
+  
+}
+
+
+
+void load_file_from_sd_to_spiffs(String filename) {
+    //Overwrite SPIFFS files if SPIFFS folder is present in the SD
+    File sourceFile = SD.open(filename);
+
+    if (sourceFile) {
+
+      greyScreen();
+      
+      announceLoadingResources();
+      
+      SPIFFS.remove(filename);
+      File destFile = SPIFFS.open(filename, FILE_WRITE);
+      static uint8_t buf[512];
+      int leido;
+      while ( leido = sourceFile.read( buf, 512) ) {
+        destFile.write( buf, leido );
+      }
+      destFile.close();
+      sourceFile.close();
+      SD.remove(filename);
+    }
+
 }

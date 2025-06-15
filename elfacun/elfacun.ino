@@ -17,6 +17,7 @@
 #include "rfid.h"
 #include "soc/rtc.h"
 #include "ble_board_b.h"
+#include "ble_board_c.h"
 #include "i2c_clock.h"
 #include "screen.h"
 #include "serial.h"
@@ -35,6 +36,7 @@
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
 #include "esp_system.h"
+#include "esp_bt_device.h"
 
 
 #define INCLUDE_vTaskSuspend
@@ -49,8 +51,29 @@ int numloop = 0;
 
 boolean firstScan = true;
 
+boolean evenScan = true;
+
+boolean chess960ModeAlreadySetUp = true; 
+
+boolean positionRestoredFromHoldMode = false;
+
+boolean startLichessConnection = false;
+
+unsigned long timeScanRfid = 0;
+unsigned long rfid_scan_interval = 250l;
+unsigned long timeUpdateSprites = 0;
+unsigned long sprite_update_interval = 50l;
+unsigned long timeScan = 0;
+unsigned long scan_interval = 25l;
+unsigned long timeUpdateButtons = 0;
+unsigned long buttons_update_interval = 50l;
+
+
+
 //Hardware initialization
 void setup() {
+
+  ledbuffer.reserve(167);
 
   //ENABLE BOARD BUS
   pinMode(EN_BUS, OUTPUT);
@@ -62,16 +85,18 @@ void setup() {
   //disable ESP32 brownout detector, works really bad with non-usb power
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
 
+
   //Configure comms to board in default values
   pinMode(CONTROLLER_OUTPUT_DISABLE, OUTPUT);
   //disable PIC to bus
   digitalWrite(CONTROLLER_OUTPUT_DISABLE, true);
 
   //disable passive mode latches
-  pinMode(LATCH_ROWS_DISABLE, OUTPUT);
+  //LATCH_ROWS_DISABLE is output in V1 and WRITE_ENABLE_SAFE input in V2 on the same pin, so it is safer as input by default unless we detect V1 hardware
+  pinMode(WRITE_ENABLE_SAFE, INPUT);
   pinMode(LATCH_COLUMNS_DISABLE, OUTPUT);
-  digitalWrite(LATCH_ROWS_DISABLE, true);
-  digitalWrite(LATCH_COLUMNS_DISABLE, true);
+  //digitalWrite(LATCH_ROWS_DISABLE, true);
+  //digitalWrite(LATCH_COLUMNS_DISABLE, true);
 
   pinMode(CONTROLLER_OUTPUT_CHIPSELECT, OUTPUT);
   digitalWrite(CONTROLLER_OUTPUT_CHIPSELECT, true);
@@ -88,7 +113,7 @@ void setup() {
   //initialize screen
   initialize_tft();
 
-  //SPI.setFrequency(10000000);
+  SPI.setFrequency(10000000);
 
   //initialize SPI port expanders
   SPIExpander.begin();
@@ -123,7 +148,9 @@ void setup() {
   SPIExpanderButtons.pinMode(3, INPUT_PULLUP);
   SPIExpanderButtons.pinMode(4, INPUT_PULLUP);
   SPIExpanderButtons.pinMode(5, INPUT_PULLUP);
-  SPIExpanderButtons.pinMode(6, INPUT);
+  //This will be switched to input when hardware detection is finished
+  SPIExpanderButtons.pinMode(HARDWARE_V2_DETECT, INPUT_PULLUP);
+  //This will be switched to output if V2 hardware is detected
   SPIExpanderButtons.pinMode(7, INPUT);
 
   //BUS CONTROL SIGNALS
@@ -131,13 +158,53 @@ void setup() {
   SPIExpanderButtons.pinMode(9, OUTPUT);
   SPIExpanderButtons.pinMode(10, OUTPUT);
   SPIExpanderButtons.pinMode(11, OUTPUT);
+  //These 4 will be switched to outputs if V2 hardware is detected
   SPIExpanderButtons.pinMode(12, INPUT);
   SPIExpanderButtons.pinMode(13, INPUT);
   SPIExpanderButtons.pinMode(14, INPUT);
   SPIExpanderButtons.pinMode(15, INPUT);
 
-  //Put the bus in steaady mode
+  //Put the bus in staeady mode
   busValuesToDefault();
+
+
+  //Detect V2 hardware with improved passive mode capture hardware
+  isV2Hardware = !SPIExpanderButtons.digitalRead(HARDWARE_V2_DETECT);
+
+  if (!isV2Hardware) {
+    //disable passive mode latches
+    pinMode(LATCH_ROWS_DISABLE, OUTPUT);
+    pinMode(LATCH_COLUMNS_DISABLE, OUTPUT);
+    digitalWrite(LATCH_ROWS_DISABLE, true);
+    digitalWrite(LATCH_COLUMNS_DISABLE, true);
+
+  } else {
+    //Set brightness to a medium value
+    pinMode(SCREEN_BRIGHTNESS, OUTPUT);
+    setTftBrightness(64);
+  }
+
+  SPIExpanderButtons.pinMode(HARDWARE_V2_DETECT, INPUT);
+
+  //V2 hardware initialization
+  if (isV2Hardware) {
+
+    pinMode(SCREEN_BRIGHTNESS, OUTPUT);
+
+    SPIExpanderButtons.pinMode(MEM_WRITE_ENABLE, OUTPUT);
+    SPIExpanderButtons.pinMode(MEM_ADDR_0, OUTPUT);
+    SPIExpanderButtons.pinMode(MEM_ADDR_1, OUTPUT);
+    SPIExpanderButtons.pinMode(MEM_ADDR_2, OUTPUT);
+    SPIExpanderButtons.pinMode(MEM_ADDR_SRC, OUTPUT);
+
+    SPIExpanderButtons.digitalWrite(MEM_WRITE_ENABLE, false);
+    SPIExpanderButtons.digitalWrite(MEM_ADDR_0, false);
+    SPIExpanderButtons.digitalWrite(MEM_ADDR_1, false);
+    SPIExpanderButtons.digitalWrite(MEM_ADDR_2, false);
+    SPIExpanderButtons.digitalWrite(MEM_ADDR_SRC, MEM_ADDR_SRC_BUS);
+
+  }
+
 
   //initialize nvs keystore to store/read overridden configuration parameters
   initialize_nvs();
@@ -168,14 +235,22 @@ void setup() {
       tft.fillScreen(TFT_BLACK);
       tft.setCursor(0, 0);
       updateFromFS(SD);
-    }
 
+    }
 
     //Overwrite nvs config from sd if settings.txt is present in the SD
     read_config_sd_store_nvs();
 
-    //Overwrite SPIFFS files if SPIFFS folder is present in the SD
-    //TBD
+    checkRemoteUpdateFromFS(SD);
+
+    //Check for new resources
+    //Commented out as it is somehow corrupting SPIFFS
+    //SPIFFS.begin();
+    //load_file_from_sd_to_spiffs("/modea.bmp");
+    //load_file_from_sd_to_spiffs("/modeb.bmp");
+    //load_file_from_sd_to_spiffs("/modec.bmp");
+    //clearScreen();
+    //SPIFFS.end();
 
     SD.end();
 
@@ -193,6 +268,9 @@ void setup() {
   //WiFi.disconnect(false);  // Reconnect the network
   //WiFi.mode(WIFI_STA);    // Switch WiFi off
 
+  //Initialize SPIFFS to get bmp files for displaying
+  SPIFFS.begin();
+
 
   //Clear screen
   tft.fillScreen(TFT_BLACK);
@@ -202,8 +280,8 @@ void setup() {
   //Read config from NVS if has been stored there at any time from SD card
   read_config_nvs();
 
-  //initialize RFID reader/writer
-  rfid_init();
+
+
 
 
   //Load custom base MAC address for BT if defined
@@ -216,11 +294,10 @@ void setup() {
     esp_base_mac_addr_set(new_mac);
     tft.printf("Mac assigned: %2x:%2x:%2x:%2x:%2x:%2x\n", new_mac[0], new_mac[1], new_mac[2], new_mac[3], new_mac[4], new_mac[5]);
   } else {
-    tft.println("Setting default mac");
+    tft.println("Setting default mac addr");
   }
 
-  //Initialize SPIFFS to get bmp files for displaying
-  SPIFFS.begin();
+
 
   //Decide the mode we will initialize in.
   //A-> Serial port @ 9600 bauds + BT
@@ -236,67 +313,193 @@ void setup() {
 
   boolean noButtonsPushed = SPIExpanderButtons.digitalRead(0) && SPIExpanderButtons.digitalRead(1) && SPIExpanderButtons.digitalRead(2);
 
+  boolean forcePassiveMode = !SPIExpanderButtons.digitalRead(3);
 
-  if ((noButtonsPushed && strcmp(defaultMode, "C") == 0) || !SPIExpanderButtons.digitalRead(2)) {
+  //dim screen to reduce battery draw while initializing
+  setTftBrightness(0);
+
+  boolean startBleService = false;
+
+  boolean startBleServiceC = false;
+
+  enableNvsLog = false;
+
+  centerBoardOnScreen = false;
+
+  boolean lichessGameStarted = isLichessGameInProgress();
+
+  if ((noButtonsPushed && strcmp(defaultMode, "L") == 0) || !SPIExpanderButtons.digitalRead(2) || (noButtonsPushed && lichessGameStarted) ) {
     //For Lichess
-    Serial.begin(9600);
+
+    isBrightnessAdjustmentDisabled = false;
 
     displayLichessLogo();
 
-    if (serialLog) Serial.println("Init USB lichess mode");
-
     initializeWifi();
+
     delay(2000);
+
     tft.setCursor(0, 0);
 
-    if (serialLog) Serial.println("Searching for running games");
-    while (!getRunningGameLichess()) {
-      if (serialLog) Serial.println("Retrying getRunningGameLichess");
+    Serial.begin(115200);
+
+    if (isV2Hardware) {
+      if (serialLog) Serial.println("V2 hardware lichess mode");
+    } else {
+      if (serialLog) Serial.println("V1 hardware lichess mode");
     }
-    isLichessConnected = true;
+
+    startLichessConnection = true;
+
+    //Disable board scanning until we process the first fen
+    disableBoardScanning = true;
 
   }
+
+
+  else if ((noButtonsPushed && strcmp(defaultMode, "C") == 0) || (!SPIExpanderButtons.digitalRead(1) && !SPIExpanderButtons.digitalRead(0))) {
+    //For type C board
+
+    isBrightnessAdjustmentDisabled = false;
+
+    if (!noButtonsPushed && lichessGameStarted) {
+      //abort
+      setLichessGameFinished();
+    }
+
+    displayModeCLogo();
+
+    Serial.begin(9600);
+    if (isV2Hardware) {
+      if (serialLog) Serial.println("V2 hardware C mode");
+    } else {
+      if (serialLog) Serial.println("V1 hardware C mode");
+    }
+
+    //Needed to read the mac and not confuse IOS devices with the new mac
+    SerialBT.begin(modeABtAdvertisedName);
+
+    //Change mac address for mode C
+    const uint8_t* mac;
+
+
+    mac = esp_bt_dev_get_address();
+
+    if (mac[5] <= 250) {
+      modeCmac[5] = mac[5] + 2;
+    } else {
+      modeCmac[5] = mac[5] - 6;
+  }
+
+    modeCmac[4] = mac[4];
+    modeCmac[3] = mac[3];
+    modeCmac[2] = mac[2];
+    modeCmac[1] = mac[1];
+    modeCmac[0] = mac[0];
+
+    esp_base_mac_addr_set(modeCmac);
+
+    SerialBT.end();
+    SerialBT.begin(modeCBtAdvertisedName);
+
+    initBleC();
+
+    startBleServiceC = true;
+
+
+  }
+
+
+
+
+
 
   else if ((noButtonsPushed && strcmp(defaultMode, "B") == 0) || !SPIExpanderButtons.digitalRead(1)) {
     //For type B board
+
+    isBrightnessAdjustmentDisabled = false;
+
+    if (!noButtonsPushed && lichessGameStarted) {
+      //abort
+      setLichessGameFinished();
+    }
+
     Serial.begin(38400, SERIAL_7O1);
+    if (isV2Hardware) {
+      if (serialLog) Serial.println("V2 hardware B mode");
+    } else {
+      if (serialLog) Serial.println("V1 hardware B mode");
+    }
+
     displayModeBLogo();
+
     SerialBT.begin(modeBBtAdvertisedName);
     isTypeBUSBBoard = true;
-    initBleService();
-    if (serialLog) Serial.println("Init USB mode B");
+
+    centerBoardOnScreen = true;
+
+    initBle();
+
+    startBleService = true;
 
   } else {
+
+    isBrightnessAdjustmentDisabled = false;
+
+    if (!noButtonsPushed && lichessGameStarted) {
+      //abort
+      setLichessGameFinished();
+    }
+
     //For type A board
-    Serial.begin(9600);
     displayModeALogo();
+
+    Serial.begin(9600);
+    if (isV2Hardware) {
+      if (serialLog) Serial.println("V2 hardware A mode");
+    } else {
+      if (serialLog) Serial.println("V1 hardware A mode");
+    }
+
     SerialBT.begin(modeABtAdvertisedName);
-    initBleService();
-    if (serialLog) Serial.println("Init USB mode A");
+
+    initBle();
+
+    startBleService = true;
 
   }
 
+
+  //initialize RFID reader/writer
+  rfid_init();
+
+  if (startLichessConnection) {
+    rfid_scan_interval = 1000l;
+    scan_interval = 50l;
+  }
+
+
   //Sound will be disabled if we boot pushing the change lever button
-  if ((!SPIExpanderButtons.digitalRead(5) && buzzerEnabled == "TRUE") || (SPIExpanderButtons.digitalRead(5) && buzzerEnabled == "FALSE")) {
+  if ((!SPIExpanderButtons.digitalRead(5) && (strcmp(buzzerEnabled, "TRUE") == 0)) || (SPIExpanderButtons.digitalRead(5) && (strcmp(buzzerEnabled, "FALSE") == 0))) {
     if (serialLog) Serial.println("Disabling sound from button");
     soundIsDisabled = true;
   }
 
 
-  if ((!SPIExpanderButtons.digitalRead(5) && buzzerEnabled == "FALSE")) {
+  if (!SPIExpanderButtons.digitalRead(5) && (strcmp(buzzerEnabled, "FALSE") == 0)) {
     if (serialLog) Serial.println("Enabling sound from button");
     soundIsDisabled = false;
   }
 
 
   //Leds will be disabled if we boot pushing the next button
-  if ((!SPIExpanderButtons.digitalRead(4) && ledsEnabled == "TRUE")) {
+  if (!SPIExpanderButtons.digitalRead(4) && (strcmp(ledsEnabled, "TRUE") == 0)) {
     if (serialLog) Serial.println("Disabling leds from button");
     ledsAreDisabled = true;
   }
 
 
-  if ((!SPIExpanderButtons.digitalRead(4) && ledsEnabled == "FALSE")) {
+  if (!SPIExpanderButtons.digitalRead(4) && (strcmp(ledsEnabled, "FALSE") == 0)) {
     if (serialLog) Serial.println("Enabling leds from button");
     ledsAreDisabled = false;
   }
@@ -305,9 +508,6 @@ void setup() {
   if (serialLog) Serial.print("ESP32 CPU SPEED: ");
   if (serialLog) Serial.println(rtc_clk_cpu_freq_value(rtc_clk_cpu_freq_get()), DEC);
 
-  //Clear screen
-  tft.fillScreen(TFT_BLACK);
-  tft.setCursor(0, 0);
 
 
 
@@ -315,10 +515,16 @@ void setup() {
   memset(&currentPos, 0, sizeof(initpos[0]) * 64);
   promotingSquare = 100;
   boardInInitialPos = false;
-  boardInverted = false;
 
-  tft.loadFont(AA_FONT_SMALL);
+  if (!lichessGameStarted) {
+    boardInverted = false;
+  }
 
+  //Recover a board position if it was stored on NVS in hold mode
+  if (recoverNVSBoardPosition()) {
+    positionRestoredFromHoldMode = true;
+    firstScan = false;
+  }
 
   //Timer initialization for clock handling
   //Timers are used for local chess clock and led handling
@@ -357,17 +563,54 @@ void setup() {
   boop();
   beep();
 
+  if ((strcmp(buzzerEnabledPassiveLed, "FALSE") == 0)) {
+    soundIsDisabledPassiveLed = true;
+  }
+
+
+  if (isV2Hardware) {
+    setDefaultTftBrightness();
+  }
+
   //Look for an additional chess module plugged into the board and enter passive mode if we find one
   //To find external modules we look for activity in the bus control lines for some seconds
   //In passive mode we won't be actively managing neither board scanning nor led lighting
   //that will be controlled by the other module and we will passively listen to the signals
 
+  //If the position is restored from hold mode the passive status was restored as well
+
+
+  if (forcePassiveMode) {
+    isPassiveMode = true;
+  } else  {
+    if (!positionRestoredFromHoldMode) {
   isPassiveMode = checkForExternalModule();
+    }
+  }
+
+  if (startBleService) {
+    //Try to connect to LED service on V2 modules passive mode
+    if (isV2Hardware && isPassiveMode && (strcmp(dualLedsEnabled, "TRUE") == 0)) {
+      connectToServer();
+    }
+    initBleService();
+  }
+
+  if (startBleServiceC) {
+    //Try to connect to LED service on V2 modules passive mode
+    if (isV2Hardware && isPassiveMode && (strcmp(dualLedsEnabled, "TRUE") == 0)) {
+      connectToServer();
+    }
+    initBleServiceC();
+  }
 
 
-  if (isPassiveMode) {
-    //Passive mode. An original module will control the leds and board scanning and we will listen passively and capture the data
-    if (serialLog) Serial.println("Entering PASSIVE mode");
+
+  if (isPassiveMode && !isV2Hardware) {
+    //Passive mode on V1 hardware. An original module will control the leds and board scanning and we will listen passively and capture the data
+    if (serialLog) Serial.println("Entering PASSIVE mode V1 hardware");
+
+
 
     //23S17 ports are input
     SPIExpanderButtons.pinMode(LED_WR_DISABLE_COLUMN_LOAD_EX, INPUT);
@@ -391,12 +634,54 @@ void setup() {
     SPIExpander.pinMode(14, INPUT);
     SPIExpander.pinMode(15, INPUT);
 
+    //ENABLE BOARD BUS
+    pinMode(EN_BUS, OUTPUT);
+    digitalWrite(EN_BUS, true);
+
+
+  } else if (isPassiveMode && isV2Hardware) {
+
+    //Passive mode on V2 hardware. An original module will control the leds and board scanning and we will listen passively and capture the data
+
+    if (serialLog) Serial.println("Entering PASSIVE mode V2 hardware");
+
+    SPIExpanderButtons.pinMode(LED_WR_DISABLE_COLUMN_LOAD_EX, INPUT);
+    SPIExpanderButtons.pinMode(LED_WR_LOAD_EX, INPUT);
+    SPIExpanderButtons.pinMode(ROW_LOAD_EX, INPUT);
+    SPIExpanderButtons.pinMode(COLUMN_DISABLE_EX, INPUT);
+
+    //Data pins are always INPUT
+    digitalWrite(CONTROLLER_OUTPUT_DISABLE, true); //disable PIC to bus
+
+
+    //REVERSE OUTPUT PORT TO READ PASSIVE MODE MEMORY
+    SPIExpander.pinMode(8, INPUT);
+    SPIExpander.pinMode(9, INPUT);
+    SPIExpander.pinMode(10, INPUT);
+    SPIExpander.pinMode(11, INPUT);
+    SPIExpander.pinMode(12, INPUT);
+    SPIExpander.pinMode(13, INPUT);
+    SPIExpander.pinMode(14, INPUT);
+    SPIExpander.pinMode(15, INPUT);
+
+    SPIExpanderButtons.digitalWrite(MEM_WRITE_ENABLE, true);
+
+    //ENABLE BOARD BUS
+    pinMode(EN_BUS, OUTPUT);
+    digitalWrite(EN_BUS, true);
+
+    //give time to the board position to update for the first time
+    delay(500);
 
   } else {
 
     //Active mode, no other module is present so we control the leds and board scanning actively
     //23S17 ports back to output
-    if (serialLog) Serial.println("Entering ACTIVE mode");
+    if (isV2Hardware) {
+      if (serialLog) Serial.println("Entering ACTIVE mode V2 hardware");
+    } else {
+      if (serialLog) Serial.println("Entering ACTIVE mode V1 hardware");
+    }
 
     SPIExpanderButtons.pinMode(LED_WR_DISABLE_COLUMN_LOAD_EX, OUTPUT);
     SPIExpanderButtons.pinMode(LED_WR_LOAD_EX, OUTPUT);
@@ -406,9 +691,16 @@ void setup() {
     SPIExpanderButtons.pinMode(DISPLAY_CTRL_B, INPUT);
     SPIExpanderButtons.pinMode(DISPLAY_CTRL_C, OUTPUT);
 
+    if (!isV2Hardware) {
     //FREEZE EXTERNAL DISPLAY
     SPIExpanderButtons.digitalWrite(DISPLAY_CTRL_A, false);
     SPIExpanderButtons.digitalWrite(DISPLAY_CTRL_C, false);
+    }
+
+
+    //ENABLE BOARD BUS
+    pinMode(EN_BUS, OUTPUT);
+    digitalWrite(EN_BUS, true);
 
     busValuesToDefault();
   }
@@ -426,7 +718,18 @@ void setup() {
   } else {
     if (serialLog) Serial.println("External clock not found");
   }
+
+
+
+
+  //Clear screen
+  tft.loadFont(AA_FONT_SMALL);
+  clearScreen();
+  tft.setCursor(0, 0);
 }
+
+
+
 
 
 
@@ -434,16 +737,18 @@ void setup() {
 //Main program loop
 void loop() {
 
+  //if (serialLog) Serial.println("Loop");
+  evenScan = !evenScan;
+
   //Check if Bluetooth is connected
-  if (!isLichessConnected) {
+  if (!isLichessConnected && !startLichessConnection) {
     btConnected = SerialBT.connected(10);
   }
 
-  if ((!isLichessConnected && SerialBT.available()) || Serial.available())
+  if ((!isLichessConnected && !startLichessConnection && SerialBT.available()) || Serial.available())
   {
     //noInterrupts();
     byte rcv;
-
     rcv = readSerial();
 
 
@@ -469,10 +774,32 @@ void loop() {
   }
 
 
+  //BLE remote update
+  if (sendRemoteUpdateFileOverBLE) {
+    performRemoteUpdate();
+    sendRemoteUpdateFileOverBLE = false;
+    bleDeviceRequestedUpdateFile = false;
+
+  }
+
+  unsigned long now = millis();
+  if (now > timeScan) {
+
+    timeScan = now + scan_interval;
+
+    //GET SPI BUS
+    boolean isSemaphoreTaken = true;
+    if (!xSemaphoreTake( xScreenSemaphore, ( TickType_t ) screenSemaphoreTimeout )) {
+      isSemaphoreTaken = false;
+      if (serialLog) Serial.println("XXXXXXXXXXXXXXX   ERROR TAKING SEMAPHORE AT (now > timeScan), skipping loop ");
+
+    } else {
+
+      //START OF SPI CRITICAL SECTION
 
   //Read board state passively reading the bus if on PASSIVE mode. We will loop waiting for data for the eight rows that usually we will get in sequence
   int numRowsScanned = 0;
-  if (isPassiveMode) {
+      if (!holdMode && isPassiveMode && !isV2Hardware && !disableBoardScanning) {
 
     byte rowsScanned = 0xFF;
     byte scannedRowValue = 0;
@@ -531,14 +858,14 @@ void loop() {
           scannedpos[(8 * encodedRowValue) + 7 ] = !bitRead(scannedColValue, 7);
 
         } else {
-          scannedpos[63 - (8 * encodedRowValue) + 0 ] = !bitRead(scannedColValue, 0);
-          scannedpos[63 - (8 * encodedRowValue) + 1 ] = !bitRead(scannedColValue, 1);
-          scannedpos[63 - (8 * encodedRowValue) + 2 ] = !bitRead(scannedColValue, 2);
-          scannedpos[63 - (8 * encodedRowValue) + 3 ] = !bitRead(scannedColValue, 3);
-          scannedpos[63 - (8 * encodedRowValue) + 4 ] = !bitRead(scannedColValue, 4);
-          scannedpos[63 - (8 * encodedRowValue) + 5 ] = !bitRead(scannedColValue, 5);
-          scannedpos[63 - (8 * encodedRowValue) + 6 ] = !bitRead(scannedColValue, 6);
-          scannedpos[63 - (8 * encodedRowValue) + 7 ] = !bitRead(scannedColValue, 7);
+              scannedpos[ (8 * (7 - encodedRowValue)) + 0 ] = !bitRead(scannedColValue, 7);
+              scannedpos[ (8 * (7 - encodedRowValue)) + 1 ] = !bitRead(scannedColValue, 6);
+              scannedpos[ (8 * (7 - encodedRowValue)) + 2 ] = !bitRead(scannedColValue, 5);
+              scannedpos[ (8 * (7 - encodedRowValue)) + 3 ] = !bitRead(scannedColValue, 4);
+              scannedpos[ (8 * (7 - encodedRowValue)) + 4 ] = !bitRead(scannedColValue, 3);
+              scannedpos[ (8 * (7 - encodedRowValue)) + 5 ] = !bitRead(scannedColValue, 2);
+              scannedpos[ (8 * (7 - encodedRowValue)) + 6 ] = !bitRead(scannedColValue, 1);
+              scannedpos[ (8 * (7 - encodedRowValue)) + 7 ] = !bitRead(scannedColValue, 0);
         }
 
         rowsScanned = rowsScanned & scannedRowValue;
@@ -562,7 +889,145 @@ void loop() {
     }
   }
 
-  //Code to debug board position over serial
+
+      if (!holdMode && isPassiveMode && isV2Hardware && evenScan && !disableBoardScanning) {
+
+
+        //Read position from memory
+        numScansV2++;
+        //Switch memory to read mode
+        SPIExpanderButtons.digitalWrite(MEM_WRITE_ENABLE, false);
+        //wait till it is safe to scan
+
+        unsigned long startTime = millis();
+        while (digitalRead(WRITE_ENABLE_SAFE)) {
+          if (millis() > startTime + 500) {
+            slowMode = true;
+            SPIExpanderButtons.digitalWrite(MEM_WRITE_ENABLE, true);
+            goto SKIP;
+          }
+        }
+
+
+        if (positionRestoredFromHoldMode) {
+          //We force WRITE_ENABLE_SAFE to make at least a transition from false to true to check that there is really a module out there
+          //needed not to lose the restored position
+          SPIExpanderButtons.digitalWrite(MEM_WRITE_ENABLE, true);
+          startTime = millis();
+          while (!digitalRead(WRITE_ENABLE_SAFE)) {
+            if (millis() > startTime + 500) {
+              slowMode = true;
+              goto SKIP;
+            }
+          }
+
+          //There is a module out there, resume normal operation
+          SPIExpanderButtons.digitalWrite(MEM_WRITE_ENABLE, false);
+          startTime = millis();
+          while (digitalRead(WRITE_ENABLE_SAFE)) {
+            if (millis() > startTime + 500) {
+              slowMode = true;
+              SPIExpanderButtons.digitalWrite(MEM_WRITE_ENABLE, true);
+              goto SKIP;
+            }
+          }
+
+        }
+
+        slowMode = false;
+
+        delayMicroseconds(1);
+        SPIExpanderButtons.digitalWrite(MEM_ADDR_SRC, MEM_ADDR_SRC_PIC);
+
+
+        boolean piecesOnBoard = false;
+        byte scannedColValue = 0;
+        while (numRowsScanned < 8) {
+
+          SPIExpanderButtons.digitalWrite(MEM_ADDR_0, numRowsScanned & 0x01);
+          SPIExpanderButtons.digitalWrite(MEM_ADDR_1, (numRowsScanned & 0x02) >> 1);
+          SPIExpanderButtons.digitalWrite(MEM_ADDR_2, (numRowsScanned & 0x04) >> 2);
+          delayMicroseconds(1);
+          scannedColValue = SPIExpander.readPort(1);
+
+          for (int i = 0; i < 8; i++) {
+
+            boolean scannedBit;
+
+            int rowIndex;
+
+            if  (!boardInverted)  {
+              scannedBit = bitRead(scannedColValue, i);
+              rowIndex = numRowsScanned;
+            } else {
+              scannedBit = bitRead(scannedColValue, (7 - i));
+              rowIndex = 7 - numRowsScanned;
+            }
+
+            if (scannedBit) {
+              piecesOnBoard = true;
+            }
+
+            if (scannedBit != scannedposV2[(8 * rowIndex) + i ]) {
+              //begin again
+              numScansV2 = 0;
+            }
+
+            scannedposV2[(8 * rowIndex) + i ] = scannedBit;
+
+          }
+          numRowsScanned++;
+        }
+
+
+        //Count changed squares
+        int numPiecesScanned = 0;
+        int numPiecesPos = 0;
+        for (int i = 0; i < 64; i++) {
+          if (scannedpos[i]) {
+            numPiecesScanned++;
+          }
+
+          if (scannedposV2[i]) {
+            numPiecesPos++;
+          }
+        }
+        boolean moreThanOnePieceChanged = (numPiecesScanned > numPiecesPos + 1) || (numPiecesPos > numPiecesScanned + 1);
+
+
+        //If we are coming from hold mode we require at least one piece to be present for a valid scan and at least MIN_SCANS_V2_HOLD repeats
+
+        if (!positionRestoredFromHoldMode || piecesOnBoard) {
+
+          //check for minimum repetitions to copy to scanned
+          if ((!positionRestoredFromHoldMode && numScansV2 >= MIN_SCANS_V2) || (positionRestoredFromHoldMode && numScansV2 >= MIN_SCANS_V2_HOLD) ) {
+
+            //If more than one square changed, we scan more times. When it is only one it is not that important
+            //because if it is a glitch it will auto-correct when the piece is back
+            if (!moreThanOnePieceChanged || (numScansV2 >= MIN_SCANS_V2_PASSIVE_MULTIPLE))  {
+
+              positionRestoredFromHoldMode = false;
+              for (int i = 0; i < 64; i++) {
+                scannedpos[i] = scannedposV2[i];
+              }
+              numScansV2 = 0;
+
+            }
+          }
+        }
+
+
+        //Switch memory to write mode
+        SPIExpanderButtons.digitalWrite(MEM_ADDR_SRC, MEM_ADDR_SRC_BUS);
+        delayMicroseconds(1);
+        SPIExpanderButtons.digitalWrite(MEM_WRITE_ENABLE, true);
+
+      }
+
+
+SKIP:;
+
+
   //  for (int i = 0; i < 8; i++) {
   //    for (int j = 0; j < 8; j++) {
   //      if (serialLog) Serial.print(scannedpos[(8 * i) + j ],  DEC);
@@ -579,8 +1044,9 @@ void loop() {
 
 
   //Read board state actively driving signals through the bus if on ACTIVE mode
-  if (!isPassiveMode) {
+      if (!holdMode && !isPassiveMode && !disableBoardScanning) {
 
+        numScansV2++;
 
     //todefault
     //LED_WR_DISABLE_COLUMN_LOAD  29
@@ -604,68 +1070,145 @@ void loop() {
     int activatedRow = 0;
     //loop for each row
 
-
-
     for (int activatedRow = 0; activatedRow < 8; activatedRow++) {
       //Configure bus for writing to row latch
       SPIExpanderButtons.digitalWrite(LED_WR_LOAD_EX, false); //latch leds
       SPIExpanderButtons.digitalWrite(COLUMN_DISABLE_EX, true); //disable column to bus
-      SPIExpanderButtons.digitalWrite(LED_WR_DISABLE_COLUMN_LOAD_EX, false); //disable led output  
-      SPIExpanderButtons.digitalWrite(ROW_LOAD_EX, true); //open row load latch
+          SPIExpanderButtons.digitalWrite(LED_WR_DISABLE_COLUMN_LOAD_EX, false); //led output
+          SPIExpanderButtons.digitalWrite(ROW_LOAD_EX, false); //close row load latch
       digitalWrite(CONTROLLER_OUTPUT_DISABLE, false); //enable PIC to bus
 
       //Write row address to expander
       byte encodedRow = 0xFF;
       bitWrite(encodedRow, 7 - activatedRow, 0);
       SPIExpander.writePort(1, encodedRow);
+          SPIExpanderButtons.digitalWrite(ROW_LOAD_EX, true); //open row load latch
+          delayMicroseconds(500);
       SPIExpanderButtons.digitalWrite(ROW_LOAD_EX, false); //latch row
       digitalWrite(CONTROLLER_OUTPUT_DISABLE, true); //disable PIC to bus
       SPIExpanderButtons.digitalWrite(LED_WR_DISABLE_COLUMN_LOAD_EX, true); //open row latch
       SPIExpanderButtons.digitalWrite(COLUMN_DISABLE_EX, false); //enable column to bus
+          delayMicroseconds(500);
       SPIExpanderButtons.digitalWrite(LED_WR_DISABLE_COLUMN_LOAD_EX, false); //close row latch
-
 
       //read columns values
       byte  inputRead = SPIExpander.readPort(0);
 
+          //DELETE
+          /*if (inputRead != 0x00 && (activatedRow == 0 || activatedRow == 1 || activatedRow == 6 || activatedRow == 7 ) ) {
+            Serial.print("GLITCH: ");
+            Serial.print("ROW: ");
+            Serial.print(activatedRow, HEX);
+            Serial.print(" COL: ");
+            Serial.println(inputRead, HEX);
+
+            }*/
+
       if (!boardInverted) {
         //reverse scan positions
-        scannedpos[8 * activatedRow + 0 ] = !bitRead(inputRead, 0);
-        scannedpos[8 * activatedRow + 1 ] = !bitRead(inputRead, 1);
-        scannedpos[8 * activatedRow + 2 ] = !bitRead(inputRead, 2);
-        scannedpos[8 * activatedRow + 3 ] = !bitRead(inputRead, 3);
-        scannedpos[8 * activatedRow + 4 ] = !bitRead(inputRead, 4);
-        scannedpos[8 * activatedRow + 5 ] = !bitRead(inputRead, 5);
-        scannedpos[8 * activatedRow + 6 ] = !bitRead(inputRead, 6);
-        scannedpos[8 * activatedRow + 7 ] = !bitRead(inputRead, 7);
+            for (int i = 0; i < 8; i++) {
+              if (!bitRead(inputRead, i) != scannedposV2[8 * activatedRow + i ]) {
+                //begin again
+                numScansV2 = 0;
+              }
+              scannedposV2[8 * activatedRow + i ] = !bitRead(inputRead, i);
+            }
 
       } else {
-        scannedpos[63 - (8 * activatedRow + 0) ] = !bitRead(inputRead, 0);
-        scannedpos[63 - (8 * activatedRow + 1) ] = !bitRead(inputRead, 1);
-        scannedpos[63 - (8 * activatedRow + 2) ] = !bitRead(inputRead, 2);
-        scannedpos[63 - (8 * activatedRow + 3) ] = !bitRead(inputRead, 3);
-        scannedpos[63 - (8 * activatedRow + 4) ] = !bitRead(inputRead, 4);
-        scannedpos[63 - (8 * activatedRow + 5) ] = !bitRead(inputRead, 5);
-        scannedpos[63 - (8 * activatedRow + 6) ] = !bitRead(inputRead, 6);
-        scannedpos[63 - (8 * activatedRow + 7) ] = !bitRead(inputRead, 7);
+
+            for (int i = 0; i < 8; i++) {
+              if (!bitRead(inputRead, i) != scannedposV2[63 - (8 * activatedRow + i) ]) {
+                //begin again
+                numScansV2 = 0;
+              }
+              scannedposV2[63 - (8 * activatedRow + i) ] = !bitRead(inputRead, i);
+            }
+          }
       }
 
+        //Count changed squares
+        int numPiecesScanned = 0;
+        int numPiecesPos = 0;
+        for (int i = 0; i < 64; i++) {
+          if (scannedpos[i]) {
+            numPiecesScanned++;
     }
 
+          if (scannedposV2[i]) {
+            numPiecesPos++;
   }
+        }
+        boolean moreThanOnePieceChanged = (numPiecesScanned > numPiecesPos + 1) || (numPiecesPos > numPiecesScanned + 1);
+
+
+        //check for minimum repetitions to copy to scanned
+        //On Lichess as it is self-correcting it is not that important
+        if (/*(isLichessConnected && numScansV2) ||*/ (numScansV2 >= MIN_SCANS_V2)) {
+
+          //If more than one piece changed, we scan more times. When it is only one it is not that important
+          //because if it is a glitch it will auto-correct when the piece is back
+          if (!moreThanOnePieceChanged || (numScansV2 >= MIN_SCANS_V2_MULTIPLE))  {
+            for (int i = 0; i < 64; i++) {
+              scannedpos[i] = scannedposV2[i];
+            }
+            numScansV2 = 0;
+          }
+        }
+      }
+
+
 
 
   //Display leds
   displayLedRow();
+
+      //RELEASE SPI BUS
+      if (isSemaphoreTaken) {
+        xSemaphoreGive( ( xScreenSemaphore ) );
+      }
+
 
 
 
   //Start of board movement detection comparing new scanned board positions with previous ones
 
   //Check if inverting board lifting both kings in the initial position
-  if (! boardInverted && boardInInitialPos && !scannedpos[59] && !scannedpos[3] ) {
+      if (!chess960ModeEnabled && !firstScan && ! boardInverted && boardInInitialPos && !scannedpos[59] && !scannedpos[3]
+          && scannedpos[0]
+          && scannedpos[1]
+          && scannedpos[2]
+          && scannedpos[4]
+          && scannedpos[5]
+          && scannedpos[6]
+          && scannedpos[7]
+          && scannedpos[8]
+          && scannedpos[9]
+          && scannedpos[10]
+          && scannedpos[11]
+          && scannedpos[12]
+          && scannedpos[13]
+          && scannedpos[14]
+          && scannedpos[15]
+          && scannedpos[63]
+          && scannedpos[62]
+          && scannedpos[61]
+          && scannedpos[60]
+          && scannedpos[58]
+          && scannedpos[57]
+          && scannedpos[56]
+          && scannedpos[55]
+          && scannedpos[54]
+          && scannedpos[53]
+          && scannedpos[52]
+          && scannedpos[51]
+          && scannedpos[50]
+          && scannedpos[49]
+          && scannedpos[48]
 
-    if (serialLog) Serial.println("REVERSING BOARD");
+         ) {
+
+
+        if (serialLog) Serial.println("REVERSING BOARD KINGS LIFTED");
 
     boardInverted = true;
     for (int j = 0; j <= 63; j++) {
@@ -689,9 +1232,39 @@ void loop() {
     currentPos[4] = initpos[4];
   } else
 
-    if (boardInverted && boardInInitialPos && !scannedpos[59] && !scannedpos[3] ) {
+        if (!chess960ModeEnabled && !firstScan && boardInverted && boardInInitialPos && !scannedpos[59] && !scannedpos[3]
+            && scannedpos[0]
+            && scannedpos[1]
+            && scannedpos[2]
+            && scannedpos[4]
+            && scannedpos[5]
+            && scannedpos[6]
+            && scannedpos[7]
+            && scannedpos[8]
+            && scannedpos[9]
+            && scannedpos[10]
+            && scannedpos[11]
+            && scannedpos[12]
+            && scannedpos[13]
+            && scannedpos[14]
+            && scannedpos[15]
+            && scannedpos[63]
+            && scannedpos[62]
+            && scannedpos[61]
+            && scannedpos[60]
+            && scannedpos[58]
+            && scannedpos[57]
+            && scannedpos[56]
+            && scannedpos[55]
+            && scannedpos[54]
+            && scannedpos[53]
+            && scannedpos[52]
+            && scannedpos[51]
+            && scannedpos[50]
+            && scannedpos[49]
+            && scannedpos[48]   ) {
 
-      if (serialLog) Serial.println("UNREVERSING BOARD");
+          if (serialLog) Serial.println("UNREVERSING BOARD KINGS LIFTED");
 
       boardInverted = false;
       for (int j = 0; j <= 63; j++) {
@@ -746,10 +1319,13 @@ void loop() {
 
       //Check if lifting kings in intial position to invert board
       if (//!boardInverted &&
+            !chess960ModeEnabled &&
         boardInInitialPos && (i == 59 || i == 3 || i == 60 || i == 4 )) {
         //Lifting king in intial pos, maybe want to invert board
         break;
-        
+            //      } else if (boardInverted && boardInInitialPos && (i == 60 || i == 4)) {
+            //        //Lifting king in intial pos, maybe want to invert board
+            //        break;
       } else {
 
         //No longer in initial position
@@ -804,6 +1380,18 @@ void loop() {
     beep();
   }
 
+      if (numLifted || numPositioned) {
+        for (int i = 0; i < 8; i++) {
+          for (int j = 0; j < 8; j++) {
+            if (serialLog) Serial.print(scannedpos[(8 * i) + j ],  DEC);
+          }
+          if (serialLog) Serial.println("");
+        }
+
+        if (serialLog) Serial.print("ROWS SCANNED: ");
+        if (serialLog) Serial.println(numRowsScanned, DEC);
+      }
+
   if (numLifted == 1 ) {
 
     if (serialLog) Serial.print("LIFTED: ");
@@ -838,7 +1426,7 @@ void loop() {
       if (serialLog) Serial.println("LOST TRACK");
       //lost track
       //signal out-of sync to the user and ask to compose the position scanning the missing pieces
-      //TBD
+          //TBM
       boardIsOutOfSync = true;
       liftedPiece2 = 0;
       liftedPiece = lastLifted;
@@ -851,12 +1439,12 @@ void loop() {
     if (numLifted > 2) {
       //lost track
       //signal out-of sync to the user and ask to compose the position scanning the missing pieces
-      //TBD
+          //TBM
       boardIsOutOfSync = true;
     } else if (liftedPiece != 0 || liftedPiece2 != 0) {
       //lost track
       //signal out-of sync to the user and ask to compose the position scanning the missing pieces
-      //TBD, possible future improvement
+          //TBM
       boardIsOutOfSync = true;
     }
     liftedPiece = previouslyLifted;
@@ -867,9 +1455,138 @@ void loop() {
 
 
 
+      //In chess960 we check if there are only pawns in the starting rows. In that case we assume the lifted piece is in the sequence
+      //first white, then black
+      //King-Queen-2 Rooks-2 Bishops-2 Horses
+
+      if (chess960ModeEnabled) {
+
+        //check if there are pieces only in the starting rows, and all pawns are present
+        boolean allPiecesInStartingRows = true;
+        int countWhitePieces = 0;
+        int countBlackPieces = 0;
+        for (int i = 16; i <= 47; i++) {
+          if (scannedpos[i]) {
+            allPiecesInStartingRows = false;
+          }
+        }
+        for (int i = 8; i <= 15; i++) {
+          if (!scannedpos[i]) {
+            allPiecesInStartingRows = false;
+          }
+        }
+
+        for (int i = 48; i <= 55; i++) {
+          if (!scannedpos[i]) {
+            allPiecesInStartingRows = false;
+          }
+        }
+
+        for (int i = 56; i <= 63; i++) {
+          if (scannedpos[i]) {
+            countWhitePieces++;
+          }
+        }
+
+        for (int i = 0; i <= 7; i++) {
+          if (scannedpos[i]) {
+            countBlackPieces++;
+          }
+        }
+
+
+        if (countWhitePieces == 0 && countBlackPieces == 0) {
+          chess960ModeAlreadySetUp = false; 
+        }
+
+        
+
+        //Set all pawns
+        if (allPiecesInStartingRows && !chess960ModeAlreadySetUp) {
+
+          for (int i = 8; i <= 15; i++) {
+            currentPos[i] = initpos[i];
+          }
+          for (int i = 48; i <= 55; i++) {
+            currentPos[i] = initpos[i];
+          }
+
+          for (int i = 56; i <= 63; i++) {
+            if (scannedpos[i] && !currentPos[i]) {
+
+              numPositioned = 0;
+
+              if (serialLog) Serial.print("White pieces: ");
+              if (serialLog) Serial.println(countWhitePieces, DEC);
+
+              switch (countWhitePieces) {
+                case 1: currentPos[i] = WKING;
+                  break;
+                case 2: currentPos[i] = WQUEEN;
+                  break;
+                case 3: currentPos[i] = WROOK;
+                  break;
+                case 4: currentPos[i] = WROOK;
+                  break;
+                case 5: currentPos[i] = WBISHOP;
+                  break;
+                case 6: currentPos[i] = WBISHOP;
+                  break;
+                case 7: currentPos[i] = WKNIGHT;
+                  break;
+                case 8: currentPos[i] = WKNIGHT;
+                  break;
+                default:
+                  break;
+              }
+            }
+          }
+
+
+          for (int i = 0; i <= 7; i++) {
+            if (scannedpos[i] && !currentPos[i]) {
+
+              numPositioned = 0;
+
+              if (serialLog) Serial.print("Black pieces: ");
+              if (serialLog) Serial.println(countBlackPieces, DEC);
+
+              switch (countBlackPieces) {
+                case 1: currentPos[i] = BKING;
+                  break;
+                case 2: currentPos[i] = BQUEEN;
+                  break;
+                case 3: currentPos[i] = BROOK;
+                  break;
+                case 4: currentPos[i] = BROOK;
+                  break;
+                case 5: currentPos[i] = BBISHOP;
+                  break;
+                case 6: currentPos[i] = BBISHOP;
+                  break;
+                case 7: currentPos[i] = BKNIGHT;
+                  break;
+                case 8: currentPos[i] = BKNIGHT;
+                  break;
+                default:
+                  break;
+              }
+            }
+          }
+        }
+
+
+        if (countWhitePieces == 8 && countBlackPieces == 8) {
+          chess960ModeAlreadySetUp = true; 
+        }
+      }
+
+
+
+
   //If more than one piece is positioned, or one piece is positioned when no piece was raised we have lost track of the game
   //Unless we are sertting up the initial position, in that case we know what the pieces are
-  if (firstScan || settingUpBoardMode ||  (numPositioned > 0 && liftedPiece == 0)) {
+      if ((firstScan && !startLichessConnection) || settingUpBoardMode ||  (numPositioned > 0 && liftedPiece == 0)) {
 
 
     //check if there are pieces only in the starting rows
@@ -892,7 +1609,7 @@ void loop() {
     //Set missing pieces only in the starting rows if more than 4 are unknown
     if (firstScan || (allPiecesInStartingRows && (unknownPiecesInStartingRows >= 4 || settingUpBoardMode))) {
 
-      if (!firstScan && !settingUpBoardMode) {
+          if (!firstScan && !settingUpBoardMode && !chess960ModeEnabled) {
         if (serialLog) Serial.println("Enabling setting up board mode");
         settingUpBoardMode = true;
       }
@@ -906,11 +1623,12 @@ void loop() {
       }
     } else {
       //signal out-of sync to the user and ask to compose the position scanning the missing pieces
-      //TBD, possible future improvement
+          //TBM
       boardIsOutOfSync = true;
     }
-  }
 
+
+      }
 
 
 
@@ -960,8 +1678,7 @@ void loop() {
             //liftedPiece2 = lastMovement->takenPiece;
             //position taken piece
             currentPos[lastMovement->takenPieceSquare] =  lastMovement->takenPiece;
-            //signal out-of sync to the user and ask to compose the position scanning the missing pieces
-            //TBD, possible future improvement
+                //signal out of sync board to urge user to position the missing piece
             boardIsOutOfSync = true;
           }
           //une movement back
@@ -1091,17 +1808,20 @@ void loop() {
   //we check also if it is just missing one piece. In that case enter RFID programming mode in case we want to program that piece
   int missingPiece = 0;
   boolean sendUpdate = false;
+
   for (int i = 0; i <= 63; i++) {
     if ((initpos[i] && scannedpos[i] ) || (!initpos[i] && ! scannedpos[i])) {
 
       if (i == 63 && ! missingPiece ) {
         //Starting pos white
+            if (!chess960ModeEnabled) {
         for (int j = 0; j <= 63; j++) {
           if (currentPos[j] != initpos[j]) {
             sendUpdate = true;
           }
           currentPos[j] = initpos[j];
         }
+            }
         //memcpy(&currentPos, &initpos, sizeof(initpos[0]) * 64);
         //}
 
@@ -1150,31 +1870,48 @@ void loop() {
   //We enter program mode to write to RFID tag if we are in the starting position minus one piece, so that we know which piece has been lifted
   if (missingPiece && missingPiece < 99) {
 
+
+        unsigned long now = millis();
+
+        if (now > timeScanRfid) {
     if (programRfidTag(missingPiece)) {
       //Successfully programmed
       boop();
       beep();
       boop();
     }
+          timeScanRfid = millis() + rfid_scan_interval;
+        }
   }
+
+
+
+
+
 
   //BLE status update
   long currentTime = millis();
 
-  if (updateModeTypeBUSBBoard == 0 && currentTime > (lastUpdateTimeTypeBUSBBoard +  40 )) {
+      if (BLECdeviceConnected && currentTime > (lastUpdateTimeTypeBUSBBoard +  200 )) {
+        //Update every 200ms
+        sendStatusIfNeeded();
+        lastUpdateTimeTypeBUSBBoard = millis();
+      } else if (!disableStatusOnEveryScan && updateModeTypeBUSBBoard == 0 && currentTime > (lastUpdateTimeTypeBUSBBoard +  1000 )) {
     //Update every scan
     sendStatusIfNeeded();
+        lastUpdateTimeTypeBUSBBoard = millis();
 
   } else if (updateModeTypeBUSBBoard == 2 && currentTime > (lastUpdateTimeTypeBUSBBoard +  updateIntervalTypeBUSBBoard ))  {
     //Timed update, update only if enough time has passed since last update
     sendStatusIfNeeded();
+        lastUpdateTimeTypeBUSBBoard = millis();
 
-  } else if (updateModeTypeBUSBBoard >= 3 && (numChanges > 0 || sendUpdate) ) {
-    //Update on change
+      } else if ( updateModeTypeBUSBBoard != 1 && (numChanges > 0 || sendUpdate) ) {
+        //Update on change always
     sendStatusIfNeeded();
+        lastUpdateTimeTypeBUSBBoard = millis();
   }
 
-  lastUpdateTimeTypeBUSBBoard = currentTime;
 
   //if (serialLog) Serial.println("LI0");
 
@@ -1185,40 +1922,81 @@ void loop() {
     numChanges = 0;
   }
 
-  //Lichess mode loop
+
+      //Search for NFC tags to identify lifted pieces
+      //Ignore if we are in programming mode
+      if ( !(missingPiece && missingPiece < 99)) {
+
+        unsigned long now = millis();
+        if (now > timeScanRfid) {
+
+          if (isLichessConnected) {
+            if (readRfidTag(&lastScannedPieceLichess)) {
+              boop();
+            }
+          } else {
+            if (readRfidTag(&liftedPiece)) {
+              boop();
+            }
+          }
+          timeScanRfid = millis() + rfid_scan_interval;
+        }
+      }
+
+    }//END OF SPI CRITICAL SECTION
+
+  }//END OF SCAN CODE if (now > timeScan)
+
+  //Lichess mode
+
+  if (startLichessConnection) {
+    if (serialLog) Serial.println("Searching for running games");
+    while (!getRunningGameLichess()) {
+      if (serialLog) Serial.println("Retrying getRunningGameLichess");
+    }
+    isLichessConnected = true;
+    startLichessConnection = false;
+  }
+
   if (isLichessConnected) {
 
     if (isLichessGameActive()) {
-      getIncomingGameEventsLichess();
+      //getIncomingGameEventsLichess();
       fixBoardPositionLichessData();
+      if (isLichessGameRunning()) {
       setLichessBoardLeds();
       refreshLichessClocks();
+      }
     } else {
-      getLichessTvEvents();
+      //getLichessTvEvents();
       clearAllBoardLeds();
       refreshLichessClocks();
     }
 
-
+    unsigned long now = millis();
+    if (now > timeUpdateSprites) {
     refreshLichessPlayerTopSprite();
     refreshLichessPlayerBottomSprite();
+      timeUpdateSprites = millis() +  sprite_update_interval;
+    }
   }
 
 
   //Refresh display
+  if (!isLichessConnected || isLichessFullyInitialized() ) {
   displayBoard();
+  }
 
   //Read module buttons
+  now = millis();
+  if (now > timeUpdateButtons) {
   read_module_buttons();
-
-  //Search for NFC tags to identify lifted pieces
-  //Ignore if we are in programming mode
-  if (!(missingPiece && missingPiece < 99)) {
-
-    if (readRfidTag(&liftedPiece)) {
-      boop();
-    }
+    timeUpdateButtons = millis() +  buttons_update_interval;
   }
+
+
+  }
+
 
 
   //We block here if there are pending external clock messages to the host
@@ -1229,9 +2007,6 @@ void loop() {
   //END OF MAIN LOOP
 
 }
-
-
-//Send tick data from clock to host
 void processPendingExternalClockMessageTime(int lhours_p, int  lmins_p, int  lsecs_p, int  rhours_p, int  rmins_p, int  rsecs_p, int  leverState, int  updt) {
 
 
@@ -1264,55 +2039,4 @@ void processPendingExternalClockMessageButtonChange(int button) {
   if (serialLog) Serial.print("SENDING EXTERNAL CLOCK BUTTON PUSH COMMAND: ");
   if (serialLog) Serial.println(button, DEC);
   send_button_push(button);
-}
-
-
-
-
-void registerMovement(byte originPiece, byte originSquare, byte destinationPiece, byte destinationSquare, byte takenPiece, byte takenPieceSquare ) {
-
-
-  Movement *movement = new Movement;
-  movement->originPiece = originPiece;
-  movement->originSquare = originSquare;
-  movement->destinationPiece = destinationPiece;
-  movement->destinationSquare = destinationSquare;
-  movement->takenPiece = takenPiece;
-  movement->takenPieceSquare = takenPieceSquare;
-  movement->previousMovement = lastMovement;
-  if (lastMovement != NULL) {
-    lastMovement->nextMovement = movement;
-  }
-  lastMovement = movement;
-  movement->nextMovement = NULL;
-
-
-
-
-  if (serialLog) Serial.print("Register: ");
-  if (serialLog) Serial.print(originPiece, DEC);
-  if (serialLog) Serial.print(" ");
-  if (serialLog) Serial.print(char(originSquare % 8 + 0x41));
-  if (serialLog) Serial.print(8 - (originSquare / 8));
-  if (serialLog) Serial.print(" ");
-  if (serialLog) Serial.print(destinationPiece, DEC);
-  if (serialLog) Serial.print(" ");
-  if (serialLog) Serial.print(char(destinationSquare % 8 + 0x41));
-  if (serialLog) Serial.print(8 - (destinationSquare / 8));
-  if (serialLog) Serial.print(" ");
-  if (serialLog) Serial.print(takenPiece, DEC);
-  if (serialLog) Serial.print(" ");
-  if (serialLog) Serial.print(char(takenPieceSquare % 8 + 0x41));
-  if (serialLog) Serial.println(8 - (takenPieceSquare / 8));
-
-
-  //If in lichess mode send the movement if we are in our turn
-  if (isLichessGameActive() && isMyTurnLichess() ) {
-    //Detect castling TBD
-    if (serialLog) Serial.print("Sending movement...");
-    while (! sendOutgoingMovementLichess(originSquare, destinationSquare)) {
-      if (serialLog) Serial.print("Retry sending movement...");
-    }
-  }
-
 }

@@ -22,6 +22,8 @@
 const boolean serialDebug = false;
 //serialLog- dump debug information over the serial port
 const boolean serialLog = false;
+//extraBLElog- dump debug information for BLE
+const boolean extraBLElog = false;
 //serialMirror- mirror BT comms over USB serial
 const boolean serialMirror = false;
 

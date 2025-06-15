@@ -19,6 +19,7 @@
 #include "board.h"
 #include "i2c_clock.h"
 #include "nvs_conf.h"
+#include "soc/rtc_wdt.h" 
 
 const byte OPPONENT_DRAW_OFFER = 0x60;
 const byte OPPONENT_TAKEBACK_PROPOSAL = 0x61;
@@ -35,6 +36,8 @@ extern long lichessWhiteTime;
 extern long lichessBlackTime;
 extern long lichessWhiteRating;
 extern long lichessBlackRating;
+
+extern byte measuredRssi;
 
 extern boolean isLichessConnected;
 
@@ -55,10 +58,13 @@ void getLichessTvEvents();
 void setLichessBoardLeds();
 void fixBoardPositionLichessData();
 boolean isLichessGameActive();
+boolean isLichessGameRunning();
 boolean isMyTurnLichess();
 void checkRefreshLichessConnections();
+void initLichessLoopTask();
 void initRefreshLichessConnectionsTask();
 void lichessButtonPush(byte button);
 void resetLichessGameActions();
+boolean isLichessFullyInitialized();
 
 #endif

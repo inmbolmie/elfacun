@@ -14,6 +14,7 @@
 //BOARD DATA
 #include "serial.h"
 #include "esp_pins.h"
+#include "ble_board_b.h"
 #include <MCP23S17.h>
 #include <vector>
 
@@ -64,6 +65,18 @@ extern byte lastDrawnBG[64];
 
 extern boolean lastpos[64];
 
+extern boolean scannedposV2[64];
+
+#define MIN_SCANS_V2_MULTIPLE 4
+
+#define MIN_SCANS_V2_PASSIVE_MULTIPLE 4
+
+#define MIN_SCANS_V2 2
+
+#define MIN_SCANS_V2_HOLD 20
+
+extern int numScansV2;
+
 extern boolean scannedpos[64];
 
 extern boolean transposescannedpos[64];
@@ -72,6 +85,8 @@ extern boolean passivescannedpos[64];
 
 
 extern byte ledStatusBuffer[8 * 64];
+extern byte ledStatusBufferB[8 * 64];
+extern boolean ledStatusBufferX[64];
 extern byte ledStatus[64];
 extern byte ledInterval;
 extern boolean isModeALeds;
@@ -85,6 +100,7 @@ extern boolean ledsAreDisabled;
 
 extern byte liftedPiece;
 extern byte liftedPieceSquare ;
+extern byte lastScannedPieceLichess;
 extern byte liftedPiece2 ;
 extern byte liftedPiece2Square;
 extern byte promotingSquare;
@@ -97,6 +113,8 @@ extern byte currentPos[64];
 
 extern boolean boardInverted ;
 
+extern boolean disableBoardScanning;
+
 
 //BLE objects
 
@@ -107,6 +125,7 @@ extern boolean isTypeBUSBBoard ;
 extern boolean firstCharacterReceived ;
 extern SemaphoreHandle_t xSendDataBLESemaphore;
 extern long updateIntervalTypeBUSBBoard ;
+extern long updateIntervalTicksTypeBUSBBoard;
 extern long lastUpdateTimeTypeBUSBBoard ;
 extern int updateModeTypeBUSBBoard;
 extern boolean sendFullUpdateOnNextInitialPos;
@@ -121,12 +140,17 @@ extern byte lastLedPage ;
 //general mode
 extern boolean isPassiveMode;
 
+//elfacun v2 hardware
+extern boolean isV2Hardware;
+
 //SPI Bus expander for bus data read & write
 extern MCP23S17 SPIExpander;
 
 //SPI Bus expander for buttons and bus control signals
 extern MCP23S17 SPIExpanderButtons;
 
+//960 mode
+extern boolean chess960ModeEnabled;
 
 
 
@@ -136,5 +160,10 @@ boolean checkForExternalModule();
 void read_module_buttons();
 void shitchOffLed(byte i);
 void clearAllBoardLeds();
+void forceAllLedsOff();
+
+void registerMovement(byte originPiece, byte originSquare, byte destinationPiece, byte destinationSquare, byte takenPiece, byte takenPieceSquare, boolean sendMovement  );
+void registerMovement(byte originPiece, byte originSquare, byte destinationPiece, byte destinationSquare, byte takenPiece, byte takenPieceSquare );
+
 
 #endif

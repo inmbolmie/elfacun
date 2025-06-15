@@ -76,3 +76,21 @@
 
 //Buzzer pin
 #define BUZZER 2
+
+
+//ELFACUN2 SPECIFIC PINS
+
+#define HARDWARE_V2_DETECT 6
+#define MEM_WRITE_ENABLE 7  // on V1 is INHIB_INV
+#define MEM_ADDR_0 12 // on V1 is DISPLAY_CTRL_A 0
+#define MEM_ADDR_1 13 // on V1 is DISPLAY_CTRL_B 1
+#define MEM_ADDR_2 14 // on V1 is DISPLAY_CTRL_C 2
+#define MEM_ADDR_SRC 15 // on V1 is NC
+
+#define WRITE_ENABLE_SAFE 33 // on V1 is LATCH_ROWS_DISABLE
+
+#define MEM_ADDR_SRC_BUS true
+#define MEM_ADDR_SRC_PIC false
+
+#define SCREEN_BRIGHTNESS 32 // on V1 is LATCH_COLUMNS_DISABLE
+ 
