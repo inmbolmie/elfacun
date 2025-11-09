@@ -332,14 +332,6 @@ void displayLedRow() {
 
     digitalWrite(CONTROLLER_OUTPUT_DISABLE, false); //enable PIC to bus
 
-    //Load  leds latch
-    SPIExpander.writePort(1, currentLed);
-    SPIExpanderButtons.digitalWrite(LED_WR_LOAD_EX, true); //unlatch leds
-    SPIExpanderButtons.digitalWrite(LED_WR_LOAD_EX, false); //latch leds
-
-    //Configure bus for writing to row latch
-
-
     //Write row address to expander
     byte encodedRow = 0xFF;
     bitWrite(encodedRow, 7 - currentLedRow, 0);
@@ -347,6 +339,11 @@ void displayLedRow() {
     SPIExpanderButtons.digitalWrite(ROW_LOAD_EX, true); //open row load latch
     SPIExpanderButtons.digitalWrite(ROW_LOAD_EX, false); //latch row
 
+     //Load  leds latch
+    SPIExpander.writePort(1, currentLed);
+    SPIExpanderButtons.digitalWrite(LED_WR_LOAD_EX, true); //unlatch leds
+    SPIExpanderButtons.digitalWrite(LED_WR_LOAD_EX, false); //latch leds
+    
     //lit leds
     SPIExpanderButtons.digitalWrite(LED_WR_DISABLE_COLUMN_LOAD_EX, false);
 
@@ -368,7 +365,6 @@ void forceAllLedsOff() {
   SPIExpander.writePort(1, 0x00);
   SPIExpanderButtons.digitalWrite(LED_WR_LOAD_EX, true); //unlatch leds
   SPIExpanderButtons.digitalWrite(LED_WR_LOAD_EX, false); //latch leds
-
   //Configure bus for writing to row latch
 
 
@@ -378,7 +374,7 @@ void forceAllLedsOff() {
   SPIExpander.writePort(1, encodedRow);
   SPIExpanderButtons.digitalWrite(ROW_LOAD_EX, true); //open row load latch
   SPIExpanderButtons.digitalWrite(ROW_LOAD_EX, false); //latch row
-
+  
   //lit leds
   SPIExpanderButtons.digitalWrite(LED_WR_DISABLE_COLUMN_LOAD_EX, false);
 
