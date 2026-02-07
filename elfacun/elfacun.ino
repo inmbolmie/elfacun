@@ -584,7 +584,7 @@ void setup() {
     isPassiveMode = true;
   } else  {
     if (!positionRestoredFromHoldMode) {
-  isPassiveMode = checkForExternalModule();
+      isPassiveMode = checkForExternalModule();
     }
   }
 
@@ -726,6 +726,11 @@ void setup() {
   tft.loadFont(AA_FONT_SMALL);
   clearScreen();
   tft.setCursor(0, 0);
+
+  //Paint chessconnect mode if enabled by default
+  if (chessconnectMode) {
+    onChessconnectModeIcon();
+  }
 }
 
 
@@ -797,67 +802,67 @@ void loop() {
 
       //START OF SPI CRITICAL SECTION
 
-  //Read board state passively reading the bus if on PASSIVE mode. We will loop waiting for data for the eight rows that usually we will get in sequence
-  int numRowsScanned = 0;
+      //Read board state passively reading the bus if on PASSIVE mode. We will loop waiting for data for the eight rows that usually we will get in sequence
+      int numRowsScanned = 0;
       if (!holdMode && isPassiveMode && !isV2Hardware && !disableBoardScanning) {
 
-    byte rowsScanned = 0xFF;
-    byte scannedRowValue = 0;
-    byte scannedColValue = 0;
+        byte rowsScanned = 0xFF;
+        byte scannedRowValue = 0;
+        byte scannedColValue = 0;
 
-    //if (serialLog) Serial.println("------------->SCANNING ROWS");
+        //if (serialLog) Serial.println("------------->SCANNING ROWS");
 
-    while (rowsScanned != 0x00) {
-      numRowsScanned++;
+        while (rowsScanned != 0x00) {
+          numRowsScanned++;
 
-      //Block until external latch inhibition signal fires to indicate latches are freshly loaded
-      while (SPIExpanderButtons.digitalRead(INHIB_INV)) {
-        //delay(1);
-      }
-      delayMicroseconds(20);
+          //Block until external latch inhibition signal fires to indicate latches are freshly loaded
+          while (SPIExpanderButtons.digitalRead(INHIB_INV)) {
+            //delay(1);
+          }
+          delayMicroseconds(20);
 
-      digitalWrite(LATCH_ROWS_DISABLE, false);
-      //delay(1);
-      scannedRowValue = SPIExpander.readPort(1);
-      digitalWrite(LATCH_ROWS_DISABLE, true);
-      digitalWrite(LATCH_COLUMNS_DISABLE, false);
-      //delay(1);
-      scannedColValue = SPIExpander.readPort(1);
-      digitalWrite(LATCH_COLUMNS_DISABLE, true);
-
-
-      byte encodedRowValue = 8;
-      if (scannedRowValue == 0b11111110) encodedRowValue = 7;
-      if (scannedRowValue == 0b11111101) encodedRowValue = 6;
-      if (scannedRowValue == 0b11111011) encodedRowValue = 5;
-      if (scannedRowValue == 0b11110111) encodedRowValue = 4;
-      if (scannedRowValue == 0b11101111) encodedRowValue = 3;
-      if (scannedRowValue == 0b11011111) encodedRowValue = 2;
-      if (scannedRowValue == 0b10111111) encodedRowValue = 1;
-      if (scannedRowValue == 0b01111111) encodedRowValue = 0;
+          digitalWrite(LATCH_ROWS_DISABLE, false);
+          //delay(1);
+          scannedRowValue = SPIExpander.readPort(1);
+          digitalWrite(LATCH_ROWS_DISABLE, true);
+          digitalWrite(LATCH_COLUMNS_DISABLE, false);
+          //delay(1);
+          scannedColValue = SPIExpander.readPort(1);
+          digitalWrite(LATCH_COLUMNS_DISABLE, true);
 
 
-      if (encodedRowValue > 7) {
-        //Error
-        //        if (serialLog) Serial.print("ERROR :Invalid row value scanned: ");
-        //        if (serialLog) Serial.println(scannedRowValue, BIN);
+          byte encodedRowValue = 8;
+          if (scannedRowValue == 0b11111110) encodedRowValue = 7;
+          if (scannedRowValue == 0b11111101) encodedRowValue = 6;
+          if (scannedRowValue == 0b11111011) encodedRowValue = 5;
+          if (scannedRowValue == 0b11110111) encodedRowValue = 4;
+          if (scannedRowValue == 0b11101111) encodedRowValue = 3;
+          if (scannedRowValue == 0b11011111) encodedRowValue = 2;
+          if (scannedRowValue == 0b10111111) encodedRowValue = 1;
+          if (scannedRowValue == 0b01111111) encodedRowValue = 0;
 
-      }
 
-      else {
+          if (encodedRowValue > 7) {
+            //Error
+            //        if (serialLog) Serial.print("ERROR :Invalid row value scanned: ");
+            //        if (serialLog) Serial.println(scannedRowValue, BIN);
 
-        if (!boardInverted) {
-          //reverse scan positions
-          scannedpos[(8 * encodedRowValue) + 0 ] = !bitRead(scannedColValue, 0);
-          scannedpos[(8 * encodedRowValue) + 1 ] = !bitRead(scannedColValue, 1);
-          scannedpos[(8 * encodedRowValue) + 2 ] = !bitRead(scannedColValue, 2);
-          scannedpos[(8 * encodedRowValue) + 3 ] = !bitRead(scannedColValue, 3);
-          scannedpos[(8 * encodedRowValue) + 4 ] = !bitRead(scannedColValue, 4);
-          scannedpos[(8 * encodedRowValue) + 5 ] = !bitRead(scannedColValue, 5);
-          scannedpos[(8 * encodedRowValue) + 6 ] = !bitRead(scannedColValue, 6);
-          scannedpos[(8 * encodedRowValue) + 7 ] = !bitRead(scannedColValue, 7);
+          }
 
-        } else {
+          else {
+
+            if (!boardInverted) {
+              //reverse scan positions
+              scannedpos[(8 * encodedRowValue) + 0 ] = !bitRead(scannedColValue, 0);
+              scannedpos[(8 * encodedRowValue) + 1 ] = !bitRead(scannedColValue, 1);
+              scannedpos[(8 * encodedRowValue) + 2 ] = !bitRead(scannedColValue, 2);
+              scannedpos[(8 * encodedRowValue) + 3 ] = !bitRead(scannedColValue, 3);
+              scannedpos[(8 * encodedRowValue) + 4 ] = !bitRead(scannedColValue, 4);
+              scannedpos[(8 * encodedRowValue) + 5 ] = !bitRead(scannedColValue, 5);
+              scannedpos[(8 * encodedRowValue) + 6 ] = !bitRead(scannedColValue, 6);
+              scannedpos[(8 * encodedRowValue) + 7 ] = !bitRead(scannedColValue, 7);
+
+            } else {
               scannedpos[ (8 * (7 - encodedRowValue)) + 0 ] = !bitRead(scannedColValue, 7);
               scannedpos[ (8 * (7 - encodedRowValue)) + 1 ] = !bitRead(scannedColValue, 6);
               scannedpos[ (8 * (7 - encodedRowValue)) + 2 ] = !bitRead(scannedColValue, 5);
@@ -866,28 +871,28 @@ void loop() {
               scannedpos[ (8 * (7 - encodedRowValue)) + 5 ] = !bitRead(scannedColValue, 2);
               scannedpos[ (8 * (7 - encodedRowValue)) + 6 ] = !bitRead(scannedColValue, 1);
               scannedpos[ (8 * (7 - encodedRowValue)) + 7 ] = !bitRead(scannedColValue, 0);
+            }
+
+            rowsScanned = rowsScanned & scannedRowValue;
+
+            //        if (serialLog) Serial.print("ROW VALUE: ");
+            //        if (serialLog) Serial.print(scannedRowValue, BIN);
+            //        if (serialLog) Serial.print(" REMAINING: ");
+            //        if (serialLog) Serial.print(rowsScanned, BIN);
+            //        if (serialLog) Serial.print(" COL VALUE: ");
+            //        if (serialLog) Serial.println(scannedColValue, BIN);
+
+          }
+
+          //3ms is approx the time that long inhibition signal is active so no point in sampling again now
+          delay(3);
         }
 
-        rowsScanned = rowsScanned & scannedRowValue;
-
-        //        if (serialLog) Serial.print("ROW VALUE: ");
-        //        if (serialLog) Serial.print(scannedRowValue, BIN);
-        //        if (serialLog) Serial.print(" REMAINING: ");
-        //        if (serialLog) Serial.print(rowsScanned, BIN);
-        //        if (serialLog) Serial.print(" COL VALUE: ");
-        //        if (serialLog) Serial.println(scannedColValue, BIN);
-
+        if (numRowsScanned > 50) {
+          if (serialLog) Serial.print("TOO MANY ROWS SCANNED: ");
+          if (serialLog) Serial.println(numRowsScanned, DEC);
+        }
       }
-
-      //3ms is approx the time that long inhibition signal is active so no point in sampling again now
-      delay(3);
-    }
-
-    if (numRowsScanned > 50) {
-      if (serialLog) Serial.print("TOO MANY ROWS SCANNED: ");
-      if (serialLog) Serial.println(numRowsScanned, DEC);
-    }
-  }
 
 
       if (!holdMode && isPassiveMode && isV2Hardware && evenScan && !disableBoardScanning) {
@@ -1028,71 +1033,71 @@ void loop() {
 SKIP:;
 
 
-  //  for (int i = 0; i < 8; i++) {
-  //    for (int j = 0; j < 8; j++) {
-  //      if (serialLog) Serial.print(scannedpos[(8 * i) + j ],  DEC);
-  //    }
-  //    if (serialLog) Serial.println("");
-  //  }
-  //
-  //  if (serialLog) Serial.print("ROWS SCANNED: ");
-  //  if (serialLog) Serial.println(numRowsScanned, DEC);
-  //
-  //  delay (500);
+      //  for (int i = 0; i < 8; i++) {
+      //    for (int j = 0; j < 8; j++) {
+      //      if (serialLog) Serial.print(scannedpos[(8 * i) + j ],  DEC);
+      //    }
+      //    if (serialLog) Serial.println("");
+      //  }
+      //
+      //  if (serialLog) Serial.print("ROWS SCANNED: ");
+      //  if (serialLog) Serial.println(numRowsScanned, DEC);
+      //
+      //  delay (500);
 
 
 
 
-  //Read board state actively driving signals through the bus if on ACTIVE mode
+      //Read board state actively driving signals through the bus if on ACTIVE mode
       if (!holdMode && !isPassiveMode && !disableBoardScanning) {
 
         numScansV2++;
 
-    //todefault
-    //LED_WR_DISABLE_COLUMN_LOAD  29
-    //LED_WR_LOAD                 32
-    //ROW_LOAD                    31
-    //COLUMN_DISABLE              30
+        //todefault
+        //LED_WR_DISABLE_COLUMN_LOAD  29
+        //LED_WR_LOAD                 32
+        //ROW_LOAD                    31
+        //COLUMN_DISABLE              30
 
 
-    //if (serialLog) Serial.println("------------->SCANNING ROWS");
-    //try to latch fixed value to leds
-    busValuesToDefault();
-    digitalWrite(CONTROLLER_OUTPUT_DISABLE, false); //enable PIC to bus
+        //if (serialLog) Serial.println("------------->SCANNING ROWS");
+        //try to latch fixed value to leds
+        busValuesToDefault();
+        digitalWrite(CONTROLLER_OUTPUT_DISABLE, false); //enable PIC to bus
 
 
-    //Load zero in leds latch
-    SPIExpanderButtons.digitalWrite(LED_WR_LOAD_EX, true); //unlatch leds
-    SPIExpander.writePort(1, 0b00000000);
-    SPIExpanderButtons.digitalWrite(LED_WR_LOAD_EX, false); //latch leds
-    digitalWrite(CONTROLLER_OUTPUT_DISABLE, true); //disable PIC to bus
+        //Load zero in leds latch
+        SPIExpanderButtons.digitalWrite(LED_WR_LOAD_EX, true); //unlatch leds
+        SPIExpander.writePort(1, 0b00000000);
+        SPIExpanderButtons.digitalWrite(LED_WR_LOAD_EX, false); //latch leds
+        digitalWrite(CONTROLLER_OUTPUT_DISABLE, true); //disable PIC to bus
 
-    int activatedRow = 0;
-    //loop for each row
+        int activatedRow = 0;
+        //loop for each row
 
-    for (int activatedRow = 0; activatedRow < 8; activatedRow++) {
-      //Configure bus for writing to row latch
-      SPIExpanderButtons.digitalWrite(LED_WR_LOAD_EX, false); //latch leds
-      SPIExpanderButtons.digitalWrite(COLUMN_DISABLE_EX, true); //disable column to bus
+        for (int activatedRow = 0; activatedRow < 8; activatedRow++) {
+          //Configure bus for writing to row latch
+          SPIExpanderButtons.digitalWrite(LED_WR_LOAD_EX, false); //latch leds
+          SPIExpanderButtons.digitalWrite(COLUMN_DISABLE_EX, true); //disable column to bus
           SPIExpanderButtons.digitalWrite(LED_WR_DISABLE_COLUMN_LOAD_EX, false); //led output
           SPIExpanderButtons.digitalWrite(ROW_LOAD_EX, false); //close row load latch
-      digitalWrite(CONTROLLER_OUTPUT_DISABLE, false); //enable PIC to bus
+          digitalWrite(CONTROLLER_OUTPUT_DISABLE, false); //enable PIC to bus
 
-      //Write row address to expander
-      byte encodedRow = 0xFF;
-      bitWrite(encodedRow, 7 - activatedRow, 0);
-      SPIExpander.writePort(1, encodedRow);
+          //Write row address to expander
+          byte encodedRow = 0xFF;
+          bitWrite(encodedRow, 7 - activatedRow, 0);
+          SPIExpander.writePort(1, encodedRow);
           SPIExpanderButtons.digitalWrite(ROW_LOAD_EX, true); //open row load latch
           delayMicroseconds(500);
-      SPIExpanderButtons.digitalWrite(ROW_LOAD_EX, false); //latch row
-      digitalWrite(CONTROLLER_OUTPUT_DISABLE, true); //disable PIC to bus
-      SPIExpanderButtons.digitalWrite(LED_WR_DISABLE_COLUMN_LOAD_EX, true); //open row latch
-      SPIExpanderButtons.digitalWrite(COLUMN_DISABLE_EX, false); //enable column to bus
+          SPIExpanderButtons.digitalWrite(ROW_LOAD_EX, false); //latch row
+          digitalWrite(CONTROLLER_OUTPUT_DISABLE, true); //disable PIC to bus
+          SPIExpanderButtons.digitalWrite(LED_WR_DISABLE_COLUMN_LOAD_EX, true); //open row latch
+          SPIExpanderButtons.digitalWrite(COLUMN_DISABLE_EX, false); //enable column to bus
           delayMicroseconds(500);
-      SPIExpanderButtons.digitalWrite(LED_WR_DISABLE_COLUMN_LOAD_EX, false); //close row latch
+          SPIExpanderButtons.digitalWrite(LED_WR_DISABLE_COLUMN_LOAD_EX, false); //close row latch
 
-      //read columns values
-      byte  inputRead = SPIExpander.readPort(0);
+          //read columns values
+          byte  inputRead = SPIExpander.readPort(0);
 
           //DELETE
           /*if (inputRead != 0x00 && (activatedRow == 0 || activatedRow == 1 || activatedRow == 6 || activatedRow == 7 ) ) {
@@ -1104,8 +1109,8 @@ SKIP:;
 
             }*/
 
-      if (!boardInverted) {
-        //reverse scan positions
+          if (!boardInverted) {
+            //reverse scan positions
             for (int i = 0; i < 8; i++) {
               if (!bitRead(inputRead, i) != scannedposV2[8 * activatedRow + i ]) {
                 //begin again
@@ -1114,7 +1119,7 @@ SKIP:;
               scannedposV2[8 * activatedRow + i ] = !bitRead(inputRead, i);
             }
 
-      } else {
+          } else {
 
             for (int i = 0; i < 8; i++) {
               if (!bitRead(inputRead, i) != scannedposV2[63 - (8 * activatedRow + i) ]) {
@@ -1124,7 +1129,7 @@ SKIP:;
               scannedposV2[63 - (8 * activatedRow + i) ] = !bitRead(inputRead, i);
             }
           }
-      }
+        } //End scan
 
         //Count changed squares
         int numPiecesScanned = 0;
@@ -1132,11 +1137,11 @@ SKIP:;
         for (int i = 0; i < 64; i++) {
           if (scannedpos[i]) {
             numPiecesScanned++;
-    }
+          }
 
           if (scannedposV2[i]) {
             numPiecesPos++;
-  }
+          }
         }
         boolean moreThanOnePieceChanged = (numPiecesScanned > numPiecesPos + 1) || (numPiecesPos > numPiecesScanned + 1);
 
@@ -1159,8 +1164,8 @@ SKIP:;
 
 
 
-  //Display leds
-  displayLedRow();
+      //Display leds
+      displayLedRow();
 
       //RELEASE SPI BUS
       if (isSemaphoreTaken) {
@@ -1170,9 +1175,9 @@ SKIP:;
 
 
 
-  //Start of board movement detection comparing new scanned board positions with previous ones
+      //Start of board movement detection comparing new scanned board positions with previous ones
 
-  //Check if inverting board lifting both kings in the initial position
+      //Check if inverting board lifting both kings in the initial position
       if (!chess960ModeEnabled && !firstScan && ! boardInverted && boardInInitialPos && !scannedpos[59] && !scannedpos[3]
           && scannedpos[0]
           && scannedpos[1]
@@ -1210,27 +1215,27 @@ SKIP:;
 
         if (serialLog) Serial.println("REVERSING BOARD KINGS LIFTED");
 
-    boardInverted = true;
-    for (int j = 0; j <= 63; j++) {
-      transposescannedpos[63 - j] = scannedpos[j];
-    }
+        boardInverted = true;
+        for (int j = 0; j <= 63; j++) {
+          transposescannedpos[63 - j] = scannedpos[j];
+        }
 
-    for (int j = 0; j <= 63; j++) {
-      scannedpos[j] = transposescannedpos[j];
-    }
+        for (int j = 0; j <= 63; j++) {
+          scannedpos[j] = transposescannedpos[j];
+        }
 
-    for (int j = 0; j <= 63; j++) {
-      transposescannedpos[63 - j] = lastpos[j];
-    }
+        for (int j = 0; j <= 63; j++) {
+          transposescannedpos[63 - j] = lastpos[j];
+        }
 
-    for (int j = 0; j <= 63; j++) {
-      lastpos[j] = transposescannedpos[j];
-    }
+        for (int j = 0; j <= 63; j++) {
+          lastpos[j] = transposescannedpos[j];
+        }
 
 
-    currentPos[60] = initpos[60];
-    currentPos[4] = initpos[4];
-  } else
+        currentPos[60] = initpos[60];
+        currentPos[4] = initpos[4];
+      } else
 
         if (!chess960ModeEnabled && !firstScan && boardInverted && boardInInitialPos && !scannedpos[59] && !scannedpos[3]
             && scannedpos[0]
@@ -1266,119 +1271,119 @@ SKIP:;
 
           if (serialLog) Serial.println("UNREVERSING BOARD KINGS LIFTED");
 
-      boardInverted = false;
-      for (int j = 0; j <= 63; j++) {
-        transposescannedpos[63 - j] = scannedpos[j];
-      }
+          boardInverted = false;
+          for (int j = 0; j <= 63; j++) {
+            transposescannedpos[63 - j] = scannedpos[j];
+          }
 
-      for (int j = 0; j <= 63; j++) {
-        scannedpos[j] = transposescannedpos[j];
-      }
+          for (int j = 0; j <= 63; j++) {
+            scannedpos[j] = transposescannedpos[j];
+          }
 
-      for (int j = 0; j <= 63; j++) {
-        transposescannedpos[63 - j] = lastpos[j];
-      }
+          for (int j = 0; j <= 63; j++) {
+            transposescannedpos[63 - j] = lastpos[j];
+          }
 
-      for (int j = 0; j <= 63; j++) {
-        lastpos[j] = transposescannedpos[j];
-      }
-
-
-      currentPos[60] = initpos[60];
-      currentPos[4] = initpos[4];
-    }
-
-  //detect changes between lastpos and scannedpos
-  byte numLifted = 0;
-  byte numPositioned = 0;
-  byte lastLifted = 0;
-  byte lastLiftedSquare = 0;
-  byte previouslyLifted = 0;
-  byte previouslyLiftedSquare = 0;
-  byte lastPositionedSquare = 0;
-  for (int i = 0; i < 64; i++) {
-    if (scannedpos[i] == true && lastpos[i] == false) {
-
-      if (isModeALeds && modeAautoLedsOff) {
-        shitchOffLed(i);
-      }
+          for (int j = 0; j <= 63; j++) {
+            lastpos[j] = transposescannedpos[j];
+          }
 
 
-      boardInInitialPos = false;
-      numPositioned++;
-      lastPositionedSquare = i;
-      //if (serialLog) Serial.print("Positioned: ");
-      //if (serialLog) Serial.println(i, DEC);
-    }
-    else if (scannedpos[i] == false && lastpos[i] == true) {
-      //Lifted piece
+          currentPos[60] = initpos[60];
+          currentPos[4] = initpos[4];
+        }
 
-      if (isModeALeds && modeAautoLedsOff) {
-        shitchOffLed(i);
-      }
+      //detect changes between lastpos and scannedpos
+      byte numLifted = 0;
+      byte numPositioned = 0;
+      byte lastLifted = 0;
+      byte lastLiftedSquare = 0;
+      byte previouslyLifted = 0;
+      byte previouslyLiftedSquare = 0;
+      byte lastPositionedSquare = 0;
+      for (int i = 0; i < 64; i++) {
+        if (scannedpos[i] == true && lastpos[i] == false) {
 
-      //Check if lifting kings in intial position to invert board
-      if (//!boardInverted &&
+          if (isModeALeds && modeAautoLedsOff) {
+            shitchOffLed(i);
+          }
+
+
+          boardInInitialPos = false;
+          numPositioned++;
+          lastPositionedSquare = i;
+          //if (serialLog) Serial.print("Positioned: ");
+          //if (serialLog) Serial.println(i, DEC);
+        }
+        else if (scannedpos[i] == false && lastpos[i] == true) {
+          //Lifted piece
+
+          if (isModeALeds && modeAautoLedsOff) {
+            shitchOffLed(i);
+          }
+
+          //Check if lifting kings in intial position to invert board
+          if (//!boardInverted &&
             !chess960ModeEnabled &&
-        boardInInitialPos && (i == 59 || i == 3 || i == 60 || i == 4 )) {
-        //Lifting king in intial pos, maybe want to invert board
-        break;
+            boardInInitialPos && (i == 59 || i == 3 || i == 60 || i == 4 )) {
+            //Lifting king in intial pos, maybe want to invert board
+            break;
             //      } else if (boardInverted && boardInInitialPos && (i == 60 || i == 4)) {
             //        //Lifting king in intial pos, maybe want to invert board
             //        break;
-      } else {
+          } else {
 
-        //No longer in initial position
-        boardInInitialPos = false;
+            //No longer in initial position
+            boardInInitialPos = false;
 
+          }
+
+
+          //Check if we are lifting the last positioned piece. In that case we may be taking back the movement
+          if (lastLifted != 0) {
+            previouslyLifted = lastLifted;
+            previouslyLiftedSquare = lastLiftedSquare;
+          }
+
+          //Normal lift, just send the movement to the host
+          //Save status update for host
+          changes[numChanges].square = i;
+          changes[numChanges].oldPiece = currentPos[i];
+          changes[numChanges++].newPiece = 0;
+          numLifted++;
+          lastLifted = currentPos[i];
+          lastLiftedSquare = i;
+          currentPos[i] = 0;
+          //if (serialLog) Serial.print("Lifted: ");
+          //if (serialLog) Serial.println(i, DEC);
+
+          //Special case, lifting a white pawn at row 8 or black pawn at row 1 become a queen by default
+          //we also enable promotion mode, where any other piece positioning doesn't remove the lastLifted value until
+          //we place the promoted piece back
+
+          //promoted piece
+
+          if (lastLifted == 0x01 && i <= 7) {
+            lastLifted = 0x06;
+            promotingSquare = i;
+          }
+          if (lastLifted == 0x07 && i >= 56) {
+            lastLifted = 0x0C;
+            promotingSquare = i;
+          }
+          //}
+        }
+        lastpos[i] = scannedpos[i];
       }
 
-
-      //Check if we are lifting the last positioned piece. In that case we may be taking back the movement
-      if (lastLifted != 0) {
-        previouslyLifted = lastLifted;
-        previouslyLiftedSquare = lastLiftedSquare;
+      //Beeps and Boops
+      if (numLifted) {
+        boop();
       }
 
-      //Normal lift, just send the movement to the host
-      //Save status update for host
-      changes[numChanges].square = i;
-      changes[numChanges].oldPiece = currentPos[i];
-      changes[numChanges++].newPiece = 0;
-      numLifted++;
-      lastLifted = currentPos[i];
-      lastLiftedSquare = i;
-      currentPos[i] = 0;
-      //if (serialLog) Serial.print("Lifted: ");
-      //if (serialLog) Serial.println(i, DEC);
-
-      //Special case, lifting a white pawn at row 8 or black pawn at row 1 become a queen by default
-      //we also enable promotion mode, where any other piece positioning doesn't remove the lastLifted value until
-      //we place the promoted piece back
-
-      //promoted piece
-
-      if (lastLifted == 0x01 && i <= 7) {
-        lastLifted = 0x06;
-        promotingSquare = i;
+      if (numPositioned) {
+        beep();
       }
-      if (lastLifted == 0x07 && i >= 56) {
-        lastLifted = 0x0C;
-        promotingSquare = i;
-      }
-      //}
-    }
-    lastpos[i] = scannedpos[i];
-  }
-
-  //Beeps and Boops
-  if (numLifted) {
-    boop();
-  }
-
-  if (numPositioned) {
-    beep();
-  }
 
       if (numLifted || numPositioned) {
         for (int i = 0; i < 8; i++) {
@@ -1392,66 +1397,66 @@ SKIP:;
         if (serialLog) Serial.println(numRowsScanned, DEC);
       }
 
-  if (numLifted == 1 ) {
+      if (numLifted == 1 ) {
 
-    if (serialLog) Serial.print("LIFTED: ");
-    if (serialLog) Serial.print(liftedPiece, DEC);
-    if (serialLog) Serial.print(" ");
-    if (serialLog) Serial.println(lastLifted, DEC);
-    if (lastMovement != NULL) {
-      if (serialLog) Serial.print("LMDE: ");
-      if (serialLog) Serial.print(char(lastMovement->destinationSquare % 8 + 0x41));
-      if (serialLog) Serial.print(8 - (lastMovement->destinationSquare / 8));
-      if (serialLog) Serial.print(" ");
-      if (serialLog) Serial.print(char(lastLiftedSquare % 8 + 0x41));
-      if (serialLog) Serial.print(8 - (lastLiftedSquare / 8));
-    }
+        if (serialLog) Serial.print("LIFTED: ");
+        if (serialLog) Serial.print(liftedPiece, DEC);
+        if (serialLog) Serial.print(" ");
+        if (serialLog) Serial.println(lastLifted, DEC);
+        if (lastMovement != NULL) {
+          if (serialLog) Serial.print("LMDE: ");
+          if (serialLog) Serial.print(char(lastMovement->destinationSquare % 8 + 0x41));
+          if (serialLog) Serial.print(8 - (lastMovement->destinationSquare / 8));
+          if (serialLog) Serial.print(" ");
+          if (serialLog) Serial.print(char(lastLiftedSquare % 8 + 0x41));
+          if (serialLog) Serial.print(8 - (lastLiftedSquare / 8));
+        }
 
-    //One piece lifted
-    if (liftedPiece == 0) {
-      //First lifted
-      liftedPiece = lastLifted;
-      liftedPieceSquare = lastLiftedSquare;
+        //One piece lifted
+        if (liftedPiece == 0) {
+          //First lifted
+          liftedPiece = lastLifted;
+          liftedPieceSquare = lastLiftedSquare;
 
-      //Maybe taking back...
-      if (lastMovement != NULL && lastMovement->destinationSquare == liftedPieceSquare) {
-        takingBackMovement = true;
-        if (serialLog) Serial.println("Maybe taking back");
+          //Maybe taking back...
+          if (lastMovement != NULL && lastMovement->destinationSquare == liftedPieceSquare) {
+            takingBackMovement = true;
+            if (serialLog) Serial.println("Maybe taking back");
+          }
+        } else if (liftedPiece2 == 0) {
+          liftedPiece2 = lastLifted;
+          liftedPiece2Square = lastLiftedSquare;
+          if (serialLog) Serial.println("Second lifted");
+        } else {
+          if (serialLog) Serial.println("LOST TRACK");
+          //lost track
+          //signal out-of sync to the user and ask to compose the position scanning the missing pieces
+          //TBM
+          boardIsOutOfSync = true;
+          liftedPiece2 = 0;
+          liftedPiece = lastLifted;
+          liftedPieceSquare = lastLiftedSquare;
+        }
       }
-    } else if (liftedPiece2 == 0) {
-      liftedPiece2 = lastLifted;
-      liftedPiece2Square = lastLiftedSquare;
-      if (serialLog) Serial.println("Second lifted");
-    } else {
-      if (serialLog) Serial.println("LOST TRACK");
-      //lost track
-      //signal out-of sync to the user and ask to compose the position scanning the missing pieces
-          //TBM
-      boardIsOutOfSync = true;
-      liftedPiece2 = 0;
-      liftedPiece = lastLifted;
-      liftedPieceSquare = lastLiftedSquare;
-    }
-  }
 
-  else if (numLifted >= 2) {
-    //two pieces lifted, maybe we lost track
-    if (numLifted > 2) {
-      //lost track
-      //signal out-of sync to the user and ask to compose the position scanning the missing pieces
+      else if (numLifted >= 2) {
+        //two pieces lifted, maybe we lost track
+        if (numLifted > 2) {
+          //lost track
+          //signal out-of sync to the user and ask to compose the position scanning the missing pieces
           //TBM
-      boardIsOutOfSync = true;
-    } else if (liftedPiece != 0 || liftedPiece2 != 0) {
-      //lost track
-      //signal out-of sync to the user and ask to compose the position scanning the missing pieces
+          boardIsOutOfSync = true;
+        } else if (liftedPiece != 0 || liftedPiece2 != 0) {
+          //lost track
+          //signal out-of sync to the user and ask to compose the position scanning the missing pieces
           //TBM
-      boardIsOutOfSync = true;
-    }
-    liftedPiece = previouslyLifted;
-    liftedPieceSquare = previouslyLiftedSquare;
-    liftedPiece2 = lastLifted;
-    liftedPiece2Square = lastLiftedSquare;
-  }
+          boardIsOutOfSync = true;
+        }
+        liftedPiece = previouslyLifted;
+        liftedPieceSquare = previouslyLiftedSquare;
+        liftedPiece2 = lastLifted;
+        liftedPiece2Square = lastLiftedSquare;
+      }
 
 
 
@@ -1496,10 +1501,10 @@ SKIP:;
 
 
         if (countWhitePieces == 0 && countBlackPieces == 0) {
-          chess960ModeAlreadySetUp = false; 
+          chess960ModeAlreadySetUp = false;
         }
 
-        
+
 
         //Set all pawns
         if (allPiecesInStartingRows && !chess960ModeAlreadySetUp) {
@@ -1577,350 +1582,350 @@ SKIP:;
 
 
         if (countWhitePieces == 8 && countBlackPieces == 8) {
-          chess960ModeAlreadySetUp = true; 
+          chess960ModeAlreadySetUp = true;
         }
       }
 
 
 
 
-  //If more than one piece is positioned, or one piece is positioned when no piece was raised we have lost track of the game
-  //Unless we are sertting up the initial position, in that case we know what the pieces are
+      //If more than one piece is positioned, or one piece is positioned when no piece was raised we have lost track of the game
+      //Unless we are sertting up the initial position, in that case we know what the pieces are
       if ((firstScan && !startLichessConnection) || settingUpBoardMode ||  (numPositioned > 0 && liftedPiece == 0)) {
 
 
-    //check if there are pieces only in the starting rows
-    boolean allPiecesInStartingRows = true;
-    int unknownPiecesInStartingRows = 0;
-    for (int i = 0; i <= 63; i++) {
-      if (scannedpos[i] && ! initpos[i]) {
-        allPiecesInStartingRows = false;
-        if (settingUpBoardMode) {
-          settingUpBoardMode = false;
-          if (serialLog) Serial.println("Disabling setting up board mode");
+        //check if there are pieces only in the starting rows
+        boolean allPiecesInStartingRows = true;
+        int unknownPiecesInStartingRows = 0;
+        for (int i = 0; i <= 63; i++) {
+          if (scannedpos[i] && ! initpos[i]) {
+            allPiecesInStartingRows = false;
+            if (settingUpBoardMode) {
+              settingUpBoardMode = false;
+              if (serialLog) Serial.println("Disabling setting up board mode");
+            }
+          }
+
+          if (initpos[i] && scannedpos[i] && !currentPos[i]) {
+            unknownPiecesInStartingRows++;
+          }
         }
-      }
 
-      if (initpos[i] && scannedpos[i] && !currentPos[i]) {
-        unknownPiecesInStartingRows++;
-      }
-    }
-
-    //Set missing pieces only in the starting rows if more than 4 are unknown
-    if (firstScan || (allPiecesInStartingRows && (unknownPiecesInStartingRows >= 4 || settingUpBoardMode))) {
+        //Set missing pieces only in the starting rows if more than 4 are unknown
+        if (firstScan || (allPiecesInStartingRows && (unknownPiecesInStartingRows >= 4 || settingUpBoardMode))) {
 
           if (!firstScan && !settingUpBoardMode && !chess960ModeEnabled) {
-        if (serialLog) Serial.println("Enabling setting up board mode");
-        settingUpBoardMode = true;
-      }
-
-      for (int i = 0; i <= 63; i++) {
-        if (scannedpos[i] && currentPos[i] != initpos[i]) {
-          currentPos[i] = initpos[i];
-          if (serialLog) Serial.print("Restoring piece at: ");
-          if (serialLog) Serial.println(i, DEC);
-        }
-      }
-    } else {
-      //signal out-of sync to the user and ask to compose the position scanning the missing pieces
-          //TBM
-      boardIsOutOfSync = true;
-    }
-
-
-      }
-
-
-
-  //try to guess positioned piece value
-  if (numPositioned == 1 && liftedPiece != 0) {
-
-    boolean takenBack = false;
-
-    //If we are taking back a movement the piece has to be positioned in the same square to abort or
-    //in the previous square to take back
-    //In the latter case a taken piece may need to be positioned back
-    if (takingBackMovement) {
-      //look at previous move to read origin and destination squares
-      if (lastMovement != NULL) {
-        if (lastMovement->originSquare ==  lastPositionedSquare) {
-
-          takenBack = true;
-
-          liftedPiece = lastMovement->originPiece;
-
-          if (Serial) {
-            if (serialLog) Serial.print("TAKING BACK: ");
-            if (serialLog) Serial.print(liftedPiece, DEC);
-            if (serialLog) Serial.print(" ");
-            if (serialLog) Serial.print(char(lastMovement->destinationSquare  % 8 + 0x41));
-            if (serialLog) Serial.print(8 - (lastMovement->destinationSquare / 8));
-            if (serialLog) Serial.print(" ");
-            if (serialLog) Serial.print(lastMovement->originPiece, DEC);
-            if (serialLog) Serial.print(" ");
-            if (serialLog) Serial.print(char(lastPositionedSquare % 8 + 0x41));
-            if (serialLog) Serial.print(8 - (lastPositionedSquare / 8));
-            if (serialLog) Serial.print(" ");
-
+            if (serialLog) Serial.println("Enabling setting up board mode");
+            settingUpBoardMode = true;
           }
-          //Maybe origin piece is different...
-          currentPos[lastPositionedSquare] =  lastMovement->originPiece;
 
-          //Taking back, if some piece was taking move it to its square
-          if (lastMovement->takenPiece) {
+          for (int i = 0; i <= 63; i++) {
+            if (scannedpos[i] && currentPos[i] != initpos[i]) {
+              currentPos[i] = initpos[i];
+              if (serialLog) Serial.print("Restoring piece at: ");
+              if (serialLog) Serial.println(i, DEC);
+            }
+          }
+        } else {
+          //signal out-of sync to the user and ask to compose the position scanning the missing pieces
+          //TBM
+          boardIsOutOfSync = true;
+        }
 
-            if (serialLog) Serial.print(lastMovement->takenPiece, DEC);
-            if (serialLog) Serial.print(" ");
-            if (serialLog) Serial.print(char(lastMovement->takenPieceSquare % 8 + 0x41));
-            if (serialLog) Serial.print(8 - (lastMovement->takenPieceSquare / 8));
 
-            //Make it lifted
-            //liftedPiece2 = lastMovement->takenPiece;
-            //position taken piece
-            currentPos[lastMovement->takenPieceSquare] =  lastMovement->takenPiece;
+      }
+
+
+
+      //try to guess positioned piece value
+      if (numPositioned == 1 && liftedPiece != 0) {
+
+        boolean takenBack = false;
+
+        //If we are taking back a movement the piece has to be positioned in the same square to abort or
+        //in the previous square to take back
+        //In the latter case a taken piece may need to be positioned back
+        if (takingBackMovement) {
+          //look at previous move to read origin and destination squares
+          if (lastMovement != NULL) {
+            if (lastMovement->originSquare ==  lastPositionedSquare) {
+
+              takenBack = true;
+
+              liftedPiece = lastMovement->originPiece;
+
+              if (Serial) {
+                if (serialLog) Serial.print("TAKING BACK: ");
+                if (serialLog) Serial.print(liftedPiece, DEC);
+                if (serialLog) Serial.print(" ");
+                if (serialLog) Serial.print(char(lastMovement->destinationSquare  % 8 + 0x41));
+                if (serialLog) Serial.print(8 - (lastMovement->destinationSquare / 8));
+                if (serialLog) Serial.print(" ");
+                if (serialLog) Serial.print(lastMovement->originPiece, DEC);
+                if (serialLog) Serial.print(" ");
+                if (serialLog) Serial.print(char(lastPositionedSquare % 8 + 0x41));
+                if (serialLog) Serial.print(8 - (lastPositionedSquare / 8));
+                if (serialLog) Serial.print(" ");
+
+              }
+              //Maybe origin piece is different...
+              currentPos[lastPositionedSquare] =  lastMovement->originPiece;
+
+              //Taking back, if some piece was taking move it to its square
+              if (lastMovement->takenPiece) {
+
+                if (serialLog) Serial.print(lastMovement->takenPiece, DEC);
+                if (serialLog) Serial.print(" ");
+                if (serialLog) Serial.print(char(lastMovement->takenPieceSquare % 8 + 0x41));
+                if (serialLog) Serial.print(8 - (lastMovement->takenPieceSquare / 8));
+
+                //Make it lifted
+                //liftedPiece2 = lastMovement->takenPiece;
+                //position taken piece
+                currentPos[lastMovement->takenPieceSquare] =  lastMovement->takenPiece;
                 //signal out of sync board to urge user to position the missing piece
+                boardIsOutOfSync = true;
+              }
+              //une movement back
+              Movement *deleteMovement = lastMovement;
+              lastMovement = lastMovement->previousMovement;
+              delete deleteMovement;
+
+              if (serialLog) Serial.println("");
+            }
+
+            else if (lastMovement->destinationSquare ==  lastPositionedSquare) {
+              //Aborting take back, do nothing.
+
+            } else {
+              //moved to a completely different square, just changing the movement or something weird
+              lastMovement->destinationSquare = lastPositionedSquare;
+            }
+
+          } else {
+            //No movements, wtf??, why are we taking back if no movements?
+          }
+
+        }
+
+        if (!takenBack) {
+
+          //If two pieces were raised, the positioned piece is the piece from the other square
+          //unless one pawn is changing column, in that case it is en-passant taking
+          //register movement if completed
+          if (liftedPiece2 != 0) {
+            //Piece taken, try to guess which is taken or en-passant taken
+            if (lastPositionedSquare == liftedPiece2Square) {
+              //Moved  liftedPiece, register movement
+              registerMovement(liftedPiece, liftedPieceSquare, liftedPiece, lastPositionedSquare, liftedPiece2, liftedPiece2Square );
+
+            } else if (lastPositionedSquare == liftedPieceSquare) {
+              //Moved  liftedPiece2, register movement
+              registerMovement(liftedPiece2, liftedPiece2Square, liftedPiece2, lastPositionedSquare, liftedPiece, liftedPieceSquare );
+              liftedPiece = liftedPiece2;
+
+            } else if ((liftedPiece == 1 || liftedPiece == 7) && (liftedPiece2 == 1 || liftedPiece2 == 7)  && (liftedPiece2Square % 8 == lastPositionedSquare % 8)) {
+              //Moved en-passant liftedPiece, register
+              if (serialLog) Serial.println("EP1");
+              registerMovement(liftedPiece, liftedPieceSquare, liftedPiece, lastPositionedSquare, liftedPiece2, liftedPiece2Square );
+
+            } else if ((liftedPiece == 1 || liftedPiece == 7) && (liftedPiece2 == 1 || liftedPiece2 == 7)  && (liftedPieceSquare % 8 == lastPositionedSquare % 8)) {
+              //Moved en-passant liftedPiece2, register
+              if (serialLog) Serial.println("EP2");
+              registerMovement(liftedPiece2, liftedPiece2Square, liftedPiece2, lastPositionedSquare, liftedPiece, liftedPieceSquare );
+              liftedPiece = liftedPiece2;
+
+            } else {
+              if (serialLog) Serial.println("xxxxxxxxxxxxxxxxxxNFI");
+              //NFI
+            }
+          }
+
+          //If only one piece raised can still be en-passant, in that case force remove the taken pawn and declare out of sync
+          else if ((liftedPiece == 1 || liftedPiece == 7)  && (liftedPieceSquare % 8 != lastPositionedSquare % 8)) {
+            //Moved en-passant liftedPiece, register
+            //remove taken pawn
+            //if (!boardInverted) {
+            if (liftedPiece == 1 && lastPositionedSquare <= (63 - 8)) {
+              if (serialLog) Serial.println("EP3");
+              //white
+              registerMovement(liftedPiece, liftedPieceSquare, liftedPiece, lastPositionedSquare, 7, lastPositionedSquare + 8 );
+              currentPos[lastPositionedSquare + 8] = 0;
+              //Save status update for pawn removal for host
+              changes[numChanges].square = lastPositionedSquare + 8;
+              changes[numChanges].oldPiece = 7;
+              changes[numChanges++].newPiece = 0;
+
+
+            }  else if (liftedPiece == 7 && lastPositionedSquare >= 8 ) {
+              //black
+              if (serialLog) Serial.println("EP4");
+              registerMovement(liftedPiece, liftedPieceSquare, liftedPiece, lastPositionedSquare, 1, lastPositionedSquare - 8 );
+              currentPos[lastPositionedSquare - 8] = 0;
+              //Save status update for pawn removal for host
+              changes[numChanges].square = lastPositionedSquare - 8;
+              changes[numChanges].oldPiece = 1;
+              changes[numChanges++].newPiece = 0;
+            }
+
             boardIsOutOfSync = true;
           }
-          //une movement back
-          Movement *deleteMovement = lastMovement;
-          lastMovement = lastMovement->previousMovement;
-          delete deleteMovement;
 
-          if (serialLog) Serial.println("");
-        }
-
-        else if (lastMovement->destinationSquare ==  lastPositionedSquare) {
-          //Aborting take back, do nothing.
-
-        } else {
-          //moved to a completely different square, just changing the movement or something weird
-          lastMovement->destinationSquare = lastPositionedSquare;
-        }
-
-      } else {
-        //No movements, wtf??, why are we taking back if no movements?
-      }
-
-    }
-
-    if (!takenBack) {
-
-      //If two pieces were raised, the positioned piece is the piece from the other square
-      //unless one pawn is changing column, in that case it is en-passant taking
-      //register movement if completed
-      if (liftedPiece2 != 0) {
-        //Piece taken, try to guess which is taken or en-passant taken
-        if (lastPositionedSquare == liftedPiece2Square) {
-          //Moved  liftedPiece, register movement
-          registerMovement(liftedPiece, liftedPieceSquare, liftedPiece, lastPositionedSquare, liftedPiece2, liftedPiece2Square );
-
-        } else if (lastPositionedSquare == liftedPieceSquare) {
-          //Moved  liftedPiece2, register movement
-          registerMovement(liftedPiece2, liftedPiece2Square, liftedPiece2, lastPositionedSquare, liftedPiece, liftedPieceSquare );
-          liftedPiece = liftedPiece2;
-
-        } else if ((liftedPiece == 1 || liftedPiece == 7) && (liftedPiece2 == 1 || liftedPiece2 == 7)  && (liftedPiece2Square % 8 == lastPositionedSquare % 8)) {
-          //Moved en-passant liftedPiece, register
-          if (serialLog) Serial.println("EP1");
-          registerMovement(liftedPiece, liftedPieceSquare, liftedPiece, lastPositionedSquare, liftedPiece2, liftedPiece2Square );
-
-        } else if ((liftedPiece == 1 || liftedPiece == 7) && (liftedPiece2 == 1 || liftedPiece2 == 7)  && (liftedPieceSquare % 8 == lastPositionedSquare % 8)) {
-          //Moved en-passant liftedPiece2, register
-          if (serialLog) Serial.println("EP2");
-          registerMovement(liftedPiece2, liftedPiece2Square, liftedPiece2, lastPositionedSquare, liftedPiece, liftedPieceSquare );
-          liftedPiece = liftedPiece2;
-
-        } else {
-          if (serialLog) Serial.println("xxxxxxxxxxxxxxxxxxNFI");
-          //NFI
-        }
-      }
-
-      //If only one piece raised can still be en-passant, in that case force remove the taken pawn and declare out of sync
-      else if ((liftedPiece == 1 || liftedPiece == 7)  && (liftedPieceSquare % 8 != lastPositionedSquare % 8)) {
-        //Moved en-passant liftedPiece, register
-        //remove taken pawn
-        //if (!boardInverted) {
-        if (liftedPiece == 1 && lastPositionedSquare <= (63 - 8)) {
-          if (serialLog) Serial.println("EP3");
-          //white
-          registerMovement(liftedPiece, liftedPieceSquare, liftedPiece, lastPositionedSquare, 7, lastPositionedSquare + 8 );
-          currentPos[lastPositionedSquare + 8] = 0;
-          //Save status update for pawn removal for host
-          changes[numChanges].square = lastPositionedSquare + 8;
-          changes[numChanges].oldPiece = 7;
-          changes[numChanges++].newPiece = 0;
-
-
-        }  else if (liftedPiece == 7 && lastPositionedSquare >= 8 ) {
-          //black
-          if (serialLog) Serial.println("EP4");
-          registerMovement(liftedPiece, liftedPieceSquare, liftedPiece, lastPositionedSquare, 1, lastPositionedSquare - 8 );
-          currentPos[lastPositionedSquare - 8] = 0;
-          //Save status update for pawn removal for host
-          changes[numChanges].square = lastPositionedSquare - 8;
-          changes[numChanges].oldPiece = 1;
-          changes[numChanges++].newPiece = 0;
-        }
-
-        boardIsOutOfSync = true;
-      }
-
-      else {
-        //Register regular move, or not move at all
-        if (liftedPieceSquare != lastPositionedSquare) {
-          registerMovement(liftedPiece, liftedPieceSquare, liftedPiece, lastPositionedSquare, 0, 0 );
-        }
-      }
-    }
-
-    //Save status update for host
-    currentPos[lastPositionedSquare] = liftedPiece;
-    changes[numChanges].square = lastPositionedSquare;
-    changes[numChanges].oldPiece = 0;
-    changes[numChanges++].newPiece = liftedPiece;
-
-
-    //Check if we are placing back a promoted pawn
-    if (promotingSquare <= 63) {
-      if (lastPositionedSquare == promotingSquare) {
-        promotingSquare = 100; //Disable
-        //edit last movement
-        lastMovement->destinationPiece = liftedPiece;
-        liftedPiece = 0;
-        liftedPiece2 = 0;
-
-      }
-    } else {
-      liftedPiece = 0;
-      liftedPiece2 = 0;
-    }
-
-    //Already processed
-    takingBackMovement = false;
-  }
-
-
-
-
-  //Check if we are in the starting position or in the "play black" starting position
-
-  //we check also if it is just missing one piece. In that case enter RFID programming mode in case we want to program that piece
-  int missingPiece = 0;
-  boolean sendUpdate = false;
-
-  for (int i = 0; i <= 63; i++) {
-    if ((initpos[i] && scannedpos[i] ) || (!initpos[i] && ! scannedpos[i])) {
-
-      if (i == 63 && ! missingPiece ) {
-        //Starting pos white
-            if (!chess960ModeEnabled) {
-        for (int j = 0; j <= 63; j++) {
-          if (currentPos[j] != initpos[j]) {
-            sendUpdate = true;
-          }
-          currentPos[j] = initpos[j];
-        }
+          else {
+            //Register regular move, or not move at all
+            if (liftedPieceSquare != lastPositionedSquare) {
+              registerMovement(liftedPiece, liftedPieceSquare, liftedPiece, lastPositionedSquare, 0, 0 );
             }
-        //memcpy(&currentPos, &initpos, sizeof(initpos[0]) * 64);
-        //}
-
-        promotingSquare = 100;
-        liftedPiece = 0;
-        liftedPiece2 = 0;
-        boardInInitialPos = true;
-
-        if (sendFullUpdateOnNextInitialPos) {
-          sendFullUpdateOnNextInitialPos = false;
-          if (!firstCharacterReceived && !isTypeBUSBBoard) {
-            sendBoardDump();
-            if (serialLog) Serial.println("Sent full board update on mode A board");
-          } else {
-            sendStatusIfNeeded();
-            if (serialLog) Serial.println("Sent full board update on mode B board");
           }
         }
 
-        while (lastMovement != NULL) {
-          Movement *deleteMovement = lastMovement;
-          lastMovement = lastMovement->previousMovement;
-          delete deleteMovement;
+        //Save status update for host
+        currentPos[lastPositionedSquare] = liftedPiece;
+        changes[numChanges].square = lastPositionedSquare;
+        changes[numChanges].oldPiece = 0;
+        changes[numChanges++].newPiece = liftedPiece;
+
+
+        //Check if we are placing back a promoted pawn
+        if (promotingSquare <= 63) {
+          if (lastPositionedSquare == promotingSquare) {
+            promotingSquare = 100; //Disable
+            //edit last movement
+            lastMovement->destinationPiece = liftedPiece;
+            liftedPiece = 0;
+            liftedPiece2 = 0;
+
+          }
+        } else {
+          liftedPiece = 0;
+          liftedPiece2 = 0;
         }
-      } else if (i == 63) {
-        //Not initial position, rearm sending full update once when initial position
-        sendFullUpdateOnNextInitialPos = true;
+
+        //Already processed
+        takingBackMovement = false;
       }
-      continue;
-    } else if (! missingPiece && initpos[i] && ! scannedpos[i] ) {
-      missingPiece = initpos[i] ;
-
-    } else {
-      missingPiece = 99;
-    }
-  }
-
-
-  firstScan = false;
 
 
 
-  //if (serialLog) Serial.println("LIA");
+
+      //Check if we are in the starting position or in the "play black" starting position
+
+      //we check also if it is just missing one piece. In that case enter RFID programming mode in case we want to program that piece
+      int missingPiece = 0;
+      boolean sendUpdate = false;
+
+      for (int i = 0; i <= 63; i++) {
+        if ((initpos[i] && scannedpos[i] ) || (!initpos[i] && ! scannedpos[i])) {
+
+          if (i == 63 && ! missingPiece ) {
+            //Starting pos white
+            if (!chess960ModeEnabled) {
+              for (int j = 0; j <= 63; j++) {
+                if (currentPos[j] != initpos[j]) {
+                  sendUpdate = true;
+                }
+                currentPos[j] = initpos[j];
+              }
+            }
+            //memcpy(&currentPos, &initpos, sizeof(initpos[0]) * 64);
+            //}
+
+            promotingSquare = 100;
+            liftedPiece = 0;
+            liftedPiece2 = 0;
+            boardInInitialPos = true;
+
+            if (sendFullUpdateOnNextInitialPos) {
+              sendFullUpdateOnNextInitialPos = false;
+              if (!firstCharacterReceived && !isTypeBUSBBoard) {
+                sendBoardDump();
+                if (serialLog) Serial.println("Sent full board update on mode A board");
+              } else {
+                sendStatusIfNeeded();
+                if (serialLog) Serial.println("Sent full board update on mode B board");
+              }
+            }
+
+            while (lastMovement != NULL) {
+              Movement *deleteMovement = lastMovement;
+              lastMovement = lastMovement->previousMovement;
+              delete deleteMovement;
+            }
+          } else if (i == 63) {
+            //Not initial position, rearm sending full update once when initial position
+            sendFullUpdateOnNextInitialPos = true;
+          }
+          continue;
+        } else if (! missingPiece && initpos[i] && ! scannedpos[i] ) {
+          missingPiece = initpos[i] ;
+
+        } else {
+          missingPiece = 99;
+        }
+      }
 
 
-  //We enter program mode to write to RFID tag if we are in the starting position minus one piece, so that we know which piece has been lifted
-  if (missingPiece && missingPiece < 99) {
+      firstScan = false;
+
+
+
+      //if (serialLog) Serial.println("LIA");
+
+
+      //We enter program mode to write to RFID tag if we are in the starting position minus one piece, so that we know which piece has been lifted
+      if (missingPiece && missingPiece < 99) {
 
 
         unsigned long now = millis();
 
         if (now > timeScanRfid) {
-    if (programRfidTag(missingPiece)) {
-      //Successfully programmed
-      boop();
-      beep();
-      boop();
-    }
+          if (programRfidTag(missingPiece)) {
+            //Successfully programmed
+            boop();
+            beep();
+            boop();
+          }
           timeScanRfid = millis() + rfid_scan_interval;
         }
-  }
+      }
 
 
 
 
 
 
-  //BLE status update
-  long currentTime = millis();
+      //BLE status update
+      long currentTime = millis();
 
       if (BLECdeviceConnected && currentTime > (lastUpdateTimeTypeBUSBBoard +  200 )) {
         //Update every 200ms
         sendStatusIfNeeded();
         lastUpdateTimeTypeBUSBBoard = millis();
       } else if (!disableStatusOnEveryScan && updateModeTypeBUSBBoard == 0 && currentTime > (lastUpdateTimeTypeBUSBBoard +  1000 )) {
-    //Update every scan
-    sendStatusIfNeeded();
+        //Update every scan
+        sendStatusIfNeeded();
         lastUpdateTimeTypeBUSBBoard = millis();
 
-  } else if (updateModeTypeBUSBBoard == 2 && currentTime > (lastUpdateTimeTypeBUSBBoard +  updateIntervalTypeBUSBBoard ))  {
-    //Timed update, update only if enough time has passed since last update
-    sendStatusIfNeeded();
+      } else if (updateModeTypeBUSBBoard == 2 && currentTime > (lastUpdateTimeTypeBUSBBoard +  updateIntervalTypeBUSBBoard ))  {
+        //Timed update, update only if enough time has passed since last update
+        sendStatusIfNeeded();
         lastUpdateTimeTypeBUSBBoard = millis();
 
       } else if ( updateModeTypeBUSBBoard != 1 && (numChanges > 0 || sendUpdate) ) {
         //Update on change always
-    sendStatusIfNeeded();
+        sendStatusIfNeeded();
         lastUpdateTimeTypeBUSBBoard = millis();
-  }
+      }
 
 
-  //if (serialLog) Serial.println("LI0");
+      //if (serialLog) Serial.println("LI0");
 
-  //Data back to Mode A driver
-  if (!firstCharacterReceived && !isTypeBUSBBoard) {
-    sendPendingUpdates();
-  } else {
-    numChanges = 0;
-  }
+      //Data back to Mode A driver
+      if (!firstCharacterReceived && !isTypeBUSBBoard) {
+        sendPendingUpdates();
+      } else {
+        numChanges = 0;
+      }
 
 
       //Search for NFC tags to identify lifted pieces
@@ -1964,8 +1969,8 @@ SKIP:;
       //getIncomingGameEventsLichess();
       fixBoardPositionLichessData();
       if (isLichessGameRunning()) {
-      setLichessBoardLeds();
-      refreshLichessClocks();
+        setLichessBoardLeds();
+        refreshLichessClocks();
       }
     } else {
       //getLichessTvEvents();
@@ -1975,8 +1980,8 @@ SKIP:;
 
     unsigned long now = millis();
     if (now > timeUpdateSprites) {
-    refreshLichessPlayerTopSprite();
-    refreshLichessPlayerBottomSprite();
+      refreshLichessPlayerTopSprite();
+      refreshLichessPlayerBottomSprite();
       timeUpdateSprites = millis() +  sprite_update_interval;
     }
   }
@@ -1984,16 +1989,16 @@ SKIP:;
 
   //Refresh display
   if (!isLichessConnected || isLichessFullyInitialized() ) {
-  displayBoard();
+    displayBoard();
   }
 
   //Read module buttons
   now = millis();
   if (now > timeUpdateButtons) {
-  read_module_buttons();
+    read_module_buttons();
     timeUpdateButtons = millis() +  buttons_update_interval;
   }
-  
+
 
   //We block here if there are pending external clock messages to the host
   if (isExternalClock) {

@@ -5,7 +5,7 @@
 
 ## News
 
-__(2025/06/15): Source code and design files for V2 module released: ----- [Make your own module](./SOURCE.md)__
+__(2026/02/07): Elfacun software version R17 released with new Chessconnect mode :__ Link: ----- __[R17 files](https://github.com/inmbolmie/elfacun/releases/tag/R17)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
 
 ## Elfacun chess module
 
@@ -32,6 +32,8 @@ To assist in the release of the module, I provide here links to some basic docum
 ![Elfacun](./images/pic4.jpg)
 
 ## Old News
+
+__(2025/06/15): Source code and design files for V2 module released: ----- [Make your own module](./SOURCE.md)__
 
 __(2025/02/23): Elfacun software version R15 released with chess 960 support:__ Link: ----- __[R15 files](https://github.com/inmbolmie/elfacun/releases/tag/R15)__ ----- Installation instructions: ----- __[Update Elfacun](./MANUAL.md#update-elfacun-software)__
 

@@ -33,9 +33,10 @@
 25. [Chessnut mode](#chessnut-mode)
 26. [Scally homage screen](#scally-homage-screen)
 27. [Chess 960 mode](#chess-960-mode)
-28. [Dual leds mode](#dual-leds-mode)
-29. [Adjust screen brightness](#adjust-screen-brightness)
-30. [Enable or disable power from board](#enable-or-disable-power-from-board)
+28. [Chessconnect mode](#chessconnect-mode)
+29. [Dual leds mode](#dual-leds-mode)
+30. [Adjust screen brightness](#adjust-screen-brightness)
+31. [Enable or disable power from board](#enable-or-disable-power-from-board)
 
 
 ### Powering the module
@@ -630,6 +631,24 @@ There are several online sites where you can generate Chess 960/Fischer Random p
 
 You can return to the "regular chess" mode by keeping pushed again the third leftmost button for 1-2 seconds.
 
+
+### Chessconnect mode
+
+
+This mode will help if you have issues with the moves indicated by the board LEDs when using the Chessconnect app.
+
+Chessconnect is a chrome web extension and mobile app that allows owners of smart chessboards to connect to various chess sites. https://chessconnect.de/
+
+Chessconnect has been reported to work well with Elfacun, but contrary to other applications it doesn't always lit all the four corners of a square to indicate some movements if those corners belong to another square that is also indicated. For example, to indicate a movement from E7 to E6 first all four corners of E7 are lit, then only the two lower leds of E6 are lit because the top leds of E6 are common leds between E7 and E6.
+
+So to properly recognize those LED patterns you can enter into the new Chessconnect mode. For that you have two options:
+
+* You can leave pressed the fourth leftmost button after starting the module (you will see "CC" indicated on the screen)
+* You can add the following parameter to your configuration to leave it on by default:
+
+        chessconnect.mode=true
+
+In theory this mode will work with any other app but it limits the animation capabilities of the board so it is not enabled by default.
 
 ## V2 only features
 

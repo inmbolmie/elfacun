@@ -17,6 +17,8 @@ boolean disableStatusOnEveryScan = false;
 
 boolean parityCheckDisabled = false;
 
+boolean chessconnectMode = false;
+
 byte setOddParity(byte in) {
 
   byte input = in;
@@ -406,6 +408,7 @@ void processLedBuffer() {
     boolean is2500CableRight = false;
     boolean is2500CableLeft = false;
 
+
     //Preprocess for RISC 2500 mode
     for (int numled = 0; numled < 81; numled++) {
 
@@ -455,9 +458,12 @@ void processLedBuffer() {
       byte numledTransposed = (numled % 9) * 9 + (numled / 9);
 
       //Extract state for each board
-
       boolean lit = bitRead(ledPattern, slot);
-
+      //In chessconnect mode we blend all the slots because they don't always lit all the leds on a square in a slot to indicate movent
+      if (chessconnectMode) {
+        lit = ledPattern > 0;
+      } 
+      
       if (lit) {
         numlit++;
         boolean firstColLit = false;
@@ -491,6 +497,7 @@ void processLedBuffer() {
         if ((numledTransposed > 8) && ((numledTransposed % 9) != 0)) {
           ledStatusBufferB[(slot * 64) + numledTransposed - 10 - (numledTransposed / 9) + 1] = ledStatusBufferB[(slot * 64) + numledTransposed - 10 - (numledTransposed / 9) + 1] + 1;
         }
+
 
         //row top (RISC mode)
         if (firstColLit && numled % 9 > 0) {

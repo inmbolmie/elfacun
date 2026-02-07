@@ -68,4 +68,6 @@ extern boolean disableStatusOnEveryScan;
 
 extern boolean parityCheckDisabled;
 
+extern boolean chessconnectMode;
+
 #endif

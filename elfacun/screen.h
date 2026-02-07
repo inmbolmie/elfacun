@@ -88,6 +88,9 @@ void onBLEConnectedIconDisabled();
 void onChess960ModeIcon();
 void offChess960ModeIcon();
 
+void onChessconnectModeIcon();
+void offChessconnectModeIcon();
+
 void clearScreen();
 void greyScreen();
 

@@ -43,6 +43,9 @@ boolean doClearBLEConnectedIcon = false;
 boolean doPaintChess960ModeIcon = false;
 boolean doClearChess960ModeIcon = false;
 
+boolean doPaintChessconnectModeIcon = false;
+boolean doClearChessconnectModeIcon = false;
+
 int toScrollTopPlayer = 0;
 int toScrollBottomPlayer = 0;
 
@@ -75,6 +78,9 @@ void initialize_tft() {
 }
 
 
+boolean isCenteredBoard() {
+  return (isExternalClock || centerBoardOnScreen) && !isLichessConnected;
+}
 
 
 void paintBLEDebugUpdateMode() {
@@ -93,39 +99,68 @@ void paintBLEDebugUpdateMode() {
 
 
 
-void paintBLEConnectedIcon() {
+
+
+
+void paintChess960ModeIcon() {
   //Called from displayBoard so no lock needed
-  tft.fillRect(300, 220, 20, 20, TFT_BLACK);
+  tft.fillRect(isCenteredBoard() ? 5 : 250, 220, 20, 20, TFT_BLACK);
   tft.setTextSize(1);
   tft.setTextWrap(false);
 
-  tft.setCursor(300, 220);
+  tft.setCursor(isCenteredBoard() ? 5 : 250, 220);
+  tft.setTextColor(TFT_WHITE);
+  tft.printf("960");
+  return;
+}
+
+void paintChess960ModeIconClear() {
+  //Called from displayBoard so no lock needed
+
+  tft.fillRect(isCenteredBoard() ? 3 : 248, 218, 30, 20, TFT_BLACK);
+  return;
+}
+
+
+void paintChessconnectModeIcon() {
+  //Called from displayBoard so no lock needed
+  tft.fillRect(isCenteredBoard() ? 282 : 279, 220, 20, 20, TFT_BLACK);
+  tft.setTextSize(1);
+  tft.setTextWrap(false);
+
+  tft.setCursor(isCenteredBoard() ? 282 : 279, 220);
+  tft.setTextColor(TFT_WHITE);
+  tft.printf("CC");
+  return;
+}
+
+void paintChessconnectModeIconClear() {
+  //Called from displayBoard so no lock needed
+
+  tft.fillRect(isCenteredBoard() ? 282 : 279, 218, 20, 20, TFT_BLACK);
+  return;
+}
+
+
+void paintBLEConnectedIcon() {
+  //Called from displayBoard so no lock needed
+  tft.fillRect(304, 220, 20, 20, TFT_BLACK);
+  tft.setTextSize(1);
+  tft.setTextWrap(false);
+
+  tft.setCursor(304, 220);
   tft.setTextColor(TFT_WHITE);
   tft.printf("B");
   return;
 }
 
 
-void paintChess960ModeIcon() {
-  //Called from displayBoard so no lock needed
-  tft.fillRect(250, 220, 20, 20, TFT_BLACK);
-  tft.setTextSize(1);
-  tft.setTextWrap(false);
-
-  tft.setCursor(250, 220);
-  tft.setTextColor(TFT_WHITE);
-  tft.printf("960");
-  return;
-}
-
-
-
 void paintBLEConnectedIconDisabled() {
 
   //Called from displayBoard so no lock needed
   paintBLEConnectedIcon();
-  tft.drawLine(298, 218, 313, 233, TFT_WHITE);
-  tft.drawLine(313, 218, 298, 233, TFT_WHITE);
+  tft.drawLine(302, 218, 317, 233, TFT_WHITE);
+  tft.drawLine(317, 218, 302, 233, TFT_WHITE);
 
   return;
 }
@@ -133,16 +168,11 @@ void paintBLEConnectedIconDisabled() {
 void paintBLEConnectedIconClear() {
   //Called from displayBoard so no lock needed
 
-  tft.fillRect(298, 218, 20, 20, TFT_BLACK);
+  tft.fillRect(302, 218, 20, 20, TFT_BLACK);
   return;
 }
 
-void paintChess960ModeIconClear() {
-  //Called from displayBoard so no lock needed
 
-  tft.fillRect(248, 218, 30, 20, TFT_BLACK);
-  return;
-}
 
 
 
@@ -509,6 +539,19 @@ void displayBoard() {
     if (serialLog) Serial.println("Clear 960");
     doClearChess960ModeIcon = false;
     paintChess960ModeIconClear();
+  }
+
+  if (doPaintChessconnectModeIcon) {
+    if (serialLog) Serial.println("Paint Chessconnect");
+    doPaintChessconnectModeIcon = false;
+    paintChessconnectModeIcon();
+  }
+
+
+  if (doClearChessconnectModeIcon) {
+    if (serialLog) Serial.println("Clear Chessconnect");
+    doClearChessconnectModeIcon = false;
+    paintChessconnectModeIconClear();
   }
 
 
@@ -2575,5 +2618,19 @@ void onChess960ModeIcon() {
 void offChess960ModeIcon() {
   if (serialLog) Serial.println("toggle doClearChess960ModeIcon");
   doClearChess960ModeIcon = true;
+  return;
+}
+
+
+void onChessconnectModeIcon() {
+  if (serialLog) Serial.println("toggle doPaintChessconnectModeIcon");
+  doPaintChessconnectModeIcon = true;
+  return;
+}
+
+
+void offChessconnectModeIcon() {
+  if (serialLog) Serial.println("toggle doClearChessconnectModeIcon");
+  doClearChessconnectModeIcon = true;
   return;
 }

@@ -873,6 +873,19 @@ void read_module_buttons() {
       disableSendButtons = true;
     }
 
+    //Check for ChessConnect mode activation
+    if (!chessconnectMode && !disableSendButtons && ((!slowMode && pushButtonCount >= 20) || (slowMode && pushButtonCount >= 3)) && !isLichessConnected && !(buttons & 0b00001000)) {
+      chessconnectMode = true;
+      onChessconnectModeIcon();
+      disableSendButtons = true;
+    }
+
+    //Check for ChessConnect deactivation
+    if (chessconnectMode && !disableSendButtons && ((!slowMode && pushButtonCount >= 20) || (slowMode && pushButtonCount >= 3)) && !isLichessConnected && !(buttons & 0b00001000)) {
+      chessconnectMode = false;
+      offChessconnectModeIcon();
+      disableSendButtons = true;
+    }
 
     //Check for 960 mode activation
     if (!chess960ModeEnabled && !disableSendButtons && ((!slowMode && pushButtonCount >= 20) || (slowMode && pushButtonCount >= 3)) && !isLichessConnected && !(buttons & 0b00000100)) {
@@ -881,7 +894,6 @@ void read_module_buttons() {
       disableSendButtons = true;
       boardInverted = false;
     }
-
 
     //Check for 960 black in front mode activation
     if (chess960ModeEnabled && disableSendButtons && ((!slowMode && pushButtonCount >= 60) || (slowMode && pushButtonCount >= 9)) && !isLichessConnected && !(buttons & 0b00000100)) {
@@ -969,6 +981,8 @@ void read_module_buttons() {
     } else if (! (buttons & 0b00000010) && ! (lastbuttons & 0b00000010)) {
       pushButtonCount++;
     } else if (! (buttons & 0b00000100) && ! (lastbuttons & 0b00000100)) {
+      pushButtonCount++;
+    } else if (! (buttons & 0b00001000) && ! (lastbuttons & 0b00001000)) {
       pushButtonCount++;
     } else if (! (buttons & 0b00010000) && ! (lastbuttons & 0b00010000)) {
       pushButtonCount++;

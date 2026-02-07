@@ -81,7 +81,7 @@ buzzer.enabled=true
 buzzer.enabled.passive.led=true
 
 
-#Buzzer tones setup 
+#Buzzer tones setup
 #You can change the frequency and duration of the sound tones:
 #Tone 1 is piece raise
 #Tone 2 is piece placement
@@ -245,3 +245,12 @@ screen.brightness.default = 64
 #scally.homage=true
 
 
+#Chessconnect mode
+#Valid values are true, false
+#Default value is false
+#If enabled it will enter a special mode to handle LEDs in mode B
+#Where all the eight "LED animation slots" are blended into only one slot
+#This is needed for Chessconnect because on a B mode connection it doesn't always lit
+#all the leds on the corners of a square to indicate movement to/from the square
+#
+#chessconnect.mode=false

@@ -78,6 +78,8 @@ int durationTone3 = 20;
 
 char* scallyHomage = "FALSE";
 
+char* chessconnect = "FALSE";
+
 boolean enableNvsLog = true;
 
 
@@ -208,6 +210,12 @@ void read_config_nvs() {
     readNvsValue(my_handle, &btPower, "btpower", false);
 
     readNvsValue(my_handle, &scallyHomage, "homage", true);
+
+    readNvsValue(my_handle, &chessconnect, "chesscon", true);
+
+    if (strcmp(chessconnect, "TRUE") == 0) {
+      chessconnectMode = true;
+    }
 
     char* parityString;
     
@@ -495,7 +503,7 @@ void read_config_sd_store_nvs() {
       } else if (cfg.nameIs("buzzer.tone.2.duration")) {
         saveNvsValue(my_handle, "dur2", cfg.copyValue());
       } else if (cfg.nameIs("buzzer.tone.3.duration")) {
-        saveNvsValue(my_handle, "dur3", cfg.copyValue());
+        saveNvsValue(my_handle, "dur3", cfg.copyValue());       
       }
 
       else if (cfg.nameIs("parity.check.disabled")) {
@@ -504,6 +512,10 @@ void read_config_sd_store_nvs() {
 
       else if (cfg.nameIs("scally.homage")) {
         saveNvsValue(my_handle, "homage", cfg.copyValue());
+      }
+
+      else if (cfg.nameIs("chessconnect.mode")) {
+        saveNvsValue(my_handle, "chesscon", cfg.copyValue());
       }
       
       else {
